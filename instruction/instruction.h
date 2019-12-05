@@ -3,7 +3,7 @@
 #include <cstdint>
 #include <utility>
 
-namespace miniplc0 {
+namespace c0 {
 
 	enum Operation {
 		ILL = 0,

@@ -3,7 +3,7 @@
 #include <cctype>
 #include <sstream>
 
-namespace miniplc0 {
+namespace c0 {
 
     std::pair<std::optional<Token>, std::optional<CompilationError>> Tokenizer::NextToken() {
         if (!_initialized)
@@ -75,13 +75,13 @@ namespace miniplc0 {
 
                     // 使用了自己封装的判断字符类型的函数，定义于 tokenizer/utils.hpp
                     // see https://en.cppreference.com/w/cpp/string/byte/isblank
-                    if (miniplc0::isspace(ch)) // 读到的字符是空白字符（空格、换行、制表符等）
+                    if (c0::isspace(ch)) // 读到的字符是空白字符（空格、换行、制表符等）
                         current_state = DFAState::INITIAL_STATE; // 保留当前状态为初始状态，此处直接break也是可以的
-                    else if (!miniplc0::isprint(ch)) // control codes and backspace
+                    else if (!c0::isprint(ch)) // control codes and backspace
                         invalid = true;
-                    else if (miniplc0::isdigit(ch)) // 读到的字符是数字
+                    else if (c0::isdigit(ch)) // 读到的字符是数字
                         current_state = DFAState::UNSIGNED_INTEGER_STATE; // 切换到无符号整数的状态
-                    else if (miniplc0::isalpha(ch)) // 读到的字符是英文字母
+                    else if (c0::isalpha(ch)) // 读到的字符是英文字母
                         current_state = DFAState::IDENTIFIER_STATE; // 切换到标识符的状态
                     else {
                         switch (ch) {
@@ -166,9 +166,9 @@ namespace miniplc0 {
                     else {
                         // 获取读到的字符的值，注意auto推导出的类型是char
                         auto ch = current_char.value();
-                        if (miniplc0::isdigit(ch))  // 如果读到的字符是数字
+                        if (c0::isdigit(ch))  // 如果读到的字符是数字
                             ss << ch; // 存储读到的字符
-                        else if (miniplc0::isalpha(ch)) {
+                        else if (c0::isalpha(ch)) {
                             ss << ch; // 存储读到的字符
                             current_state = DFAState::IDENTIFIER_STATE; // 切换状态到标识符
                         } else {
@@ -223,7 +223,7 @@ namespace miniplc0 {
                     } else {
                         // 如果读到的是字符或字母，则存储读到的字符
                         auto ch = current_char.value();
-                        if (miniplc0::isalpha(ch) || miniplc0::isdigit(ch))
+                        if (c0::isalpha(ch) || c0::isdigit(ch))
                             ss << ch;
                         else {
                             // 如果读到的字符不是上述情况之一，则回退读到的字符，并解析已经读到的字符串
@@ -332,7 +332,7 @@ namespace miniplc0 {
         switch (t.GetType()) {
             case IDENTIFIER: {
                 auto val = t.GetValueString();
-                if (miniplc0::isdigit(val[0]))
+                if (c0::isdigit(val[0]))
                     return std::make_optional<CompilationError>(t.GetStartPos().first, t.GetStartPos().second,
                                                                 ErrorCode::ErrInvalidIdentifier);
                 break;
@@ -343,11 +343,55 @@ namespace miniplc0 {
         return {};
     }
 
+    std::string removeComments(std::string prgm) {
+        int n = prgm.length();
+        std::string res;
+
+        // Flags to indicate that single line and multpile line comments
+        // have started or not.
+        bool s_cmt = false;
+        bool m_cmt = false;
+
+
+        // Traverse the given program
+        for (int i = 0; i < n; i++) {
+            // If single line comment flag is on, then check for end of it
+            if (s_cmt == true && prgm[i] == '\n')
+                s_cmt = false;
+
+                // If multiple line comment is on, then check for end of it
+            else if (m_cmt == true && prgm[i] == '*' && prgm[i + 1] == '/')
+                m_cmt = false, i++;
+
+                // If this character is in a comment, ignore it
+            else if (s_cmt || m_cmt)
+                continue;
+
+                // Check for beginning of comments and set the approproate flags
+            else if (prgm[i] == '/' && prgm[i + 1] == '/')
+                s_cmt = true, i++;
+            else if (prgm[i] == '/' && prgm[i + 1] == '*')
+                m_cmt = true, i++;
+
+                // If current character is a non-comment character, append it to res
+            else res += prgm[i];
+        }
+        return res;
+    }
+
     void Tokenizer::readAll() {
         if (_initialized)
             return;
+
+        std::string content;
         for (std::string tp; std::getline(_rdr, tp);)
-            _lines_buffer.emplace_back(std::move(tp + "\n"));
+            content = content + tp + "\n";
+
+        std::stringstream ss(removeComments(content));
+        std::string to;
+        while (std::getline(ss, to, '\n'))
+            _lines_buffer.emplace_back(std::move(to + "\n"));
+
         _initialized = true;
         _ptr = std::make_pair<int64_t, int64_t>(0, 0);
         return;

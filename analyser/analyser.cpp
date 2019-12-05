@@ -2,7 +2,7 @@
 
 #include <climits>
 
-namespace miniplc0 {
+namespace c0 {
     std::pair<std::vector<Instruction>, std::optional<CompilationError>> Analyser::Analyse() {
         auto err = analyseProgram();
         if (err.has_value())

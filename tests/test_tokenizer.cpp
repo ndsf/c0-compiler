@@ -15,8 +15,8 @@ TEST_CASE("Test hello world.") {
 		"end\n";
 	std::stringstream ss;
 	ss.str(input);
-	miniplc0::Tokenizer tkz(ss);
-	std::vector<miniplc0::Token> output = {};
+	c0::Tokenizer tkz(ss);
+	std::vector<c0::Token> output = {};
 	auto result = tkz.AllTokens();
 	if (result.second.has_value()) {
 		FAIL();

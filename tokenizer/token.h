@@ -6,7 +6,7 @@
 #include <string>
 #include <cstdint>
 
-namespace miniplc0 {
+namespace c0 {
 
 	enum TokenType {
 		NULL_TOKEN,

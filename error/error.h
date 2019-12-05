@@ -5,7 +5,7 @@
 #include <utility>
 #include <iostream>
 
-namespace miniplc0 {
+namespace c0 {
 
 	inline void DieAndPrint(std::string condition) {
 		std::cout << "Exception: " <<  condition << "\n";
