@@ -1,9 +1,70 @@
 #include "tokenizer/tokenizer.h"
 
+#include <regex>
 #include <cctype>
 #include <sstream>
 
 namespace c0 {
+    TokenType getStringTokenType(std::string str) {
+        if (str == "const")
+            return TokenType::CONST;
+        else if (str == "void")
+            return TokenType::VOID;
+        else if (str == "char")
+            return TokenType::CHAR;
+        else if (str == "double")
+            return TokenType::DOUBLE;
+        else if (str == "struct")
+            return TokenType::STRUCT;
+        else if (str == "if")
+            return TokenType::IF;
+        else if (str == "else")
+            return TokenType::ELSE;
+        else if (str == "switch")
+            return TokenType::SWITCH;
+        else if (str == "case")
+            return TokenType::CASE;
+        else if (str == "default")
+            return TokenType::DEFAULT;
+        else if (str == "while")
+            return TokenType::WHILE;
+        else if (str == "for")
+            return TokenType::FOR;
+        else if (str == "do")
+            return TokenType::DO;
+        else if (str == "return")
+            return TokenType::RETURN;
+        else if (str == "break")
+            return TokenType::BREAK;
+        else if (str == "continue")
+            return TokenType::CONTINUE;
+        else if (str == "print")
+            return TokenType::PRINT;
+        else if (str == "scan")
+            return TokenType::SCAN;
+        else
+            return TokenType::IDENTIFIER;
+    }
+
+    std::optional<char> getEscaped(char ch) {
+        switch (ch) {
+            case '\\':
+                return '\\';
+            case '\'':
+                return '\'';
+            case '"':
+                return '"';
+            case 'n':
+                return '\n';
+            case 'r':
+                return '\r';
+            case 't':
+                return '\t';
+                // TODO '\x'<hexadecimal-digit><hexadecimal-digit> I don't know what this means...
+            default:
+                return {};
+        }
+    }
 
     std::pair<std::optional<Token>, std::optional<CompilationError>> Tokenizer::NextToken() {
         if (!_initialized)
@@ -49,6 +110,7 @@ namespace c0 {
         DFAState current_state = DFAState::INITIAL_STATE;
         // 这是一个死循环，除非主动跳出
         // 每一次执行while内的代码，都可能导致状态的变更
+        auto escape = false;
         while (true) {
             // 读一个字符，请注意auto推导得出的类型是std::optional<char>
             // 这里其实有两种写法
@@ -79,34 +141,30 @@ namespace c0 {
                         current_state = DFAState::INITIAL_STATE; // 保留当前状态为初始状态，此处直接break也是可以的
                     else if (!c0::isprint(ch)) // control codes and backspace
                         invalid = true;
-                    else if (c0::isdigit(ch)) // 读到的字符是数字
-                        current_state = DFAState::UNSIGNED_INTEGER_STATE; // 切换到无符号整数的状态
-                    else if (c0::isalpha(ch)) // 读到的字符是英文字母
+                    else if (c0::isdigit(ch) && ch != '0')
+                        current_state = DFAState::NON_ZERO;
+                    else if (c0::isalpha(ch)) // C0变量不能以_开头
                         current_state = DFAState::IDENTIFIER_STATE; // 切换到标识符的状态
                     else {
                         switch (ch) {
-                            case '=': // 如果读到的字符是`=`，则切换到等于号的状态
+                            case '0':
+                                current_state = DFAState::ZERO;
+                                break;
+                            case '=':
                                 current_state = DFAState::EQUAL_SIGN_STATE;
                                 break;
                             case '-':
-                                // 请填空：切换到减号的状态
                                 current_state = DFAState::MINUS_SIGN_STATE;
                                 break;
                             case '+':
-                                // 请填空：切换到加号的状态
                                 current_state = DFAState::PLUS_SIGN_STATE;
                                 break;
                             case '*':
-                                // 请填空：切换状态
                                 current_state = DFAState::MULTIPLICATION_SIGN_STATE;
                                 break;
                             case '/':
-                                // 请填空：切换状态
                                 current_state = DFAState::DIVISION_SIGN_STATE;
                                 break;
-                                ///// 请填空：
-                                ///// 对于其他的可接受字符
-                                ///// 切换到对应的状态
                             case ';':
                                 current_state = DFAState::SEMICOLON_STATE;
                                 break;
@@ -116,7 +174,33 @@ namespace c0 {
                             case ')':
                                 current_state = DFAState::RIGHTBRACKET_STATE;
                                 break;
-                                // 不接受的字符导致的不合法的状态
+                            case ',':
+                                current_state = DFAState::COMMA_STATE;
+                                break;
+                            case '{':
+                                current_state = DFAState::LEFTBRACE_STATE;
+                                break;
+                            case '}':
+                                current_state = DFAState::RIGHTBRACE_STATE;
+                                break;
+                            case '<':
+                                current_state = DFAState::LESS_SIGN_STATE;
+                                break;
+                            case '>':
+                                current_state = DFAState::GREATER_SIGN_STATE;
+                                break;
+                            case '!':
+                                current_state = DFAState::EXCLAMATION_SIGN_STATE;
+                                break;
+                            case '.':
+                                current_state = DFAState::FLOAT_STATE;
+                                break;
+                            case '\'':
+                                current_state = DFAState::CHAR_LITERAL_STATE;
+                                break;
+                            case '\"':
+                                current_state = DFAState::STRING_LITERAL_STATE;
+                                break;
                             default:
                                 invalid = true;
                                 break;
@@ -139,8 +223,7 @@ namespace c0 {
                     break;
                 }
 
-                    // 当前状态是无符号整数
-                case UNSIGNED_INTEGER_STATE: {
+                case NON_ZERO: {
                     // 请填空：
                     // 如果当前已经读到了文件尾，则解析已经读到的字符串为整数
                     if (!current_char.has_value()) { // 当前已经读到了文件尾
@@ -166,7 +249,10 @@ namespace c0 {
                     else {
                         // 获取读到的字符的值，注意auto推导出的类型是char
                         auto ch = current_char.value();
-                        if (c0::isdigit(ch))  // 如果读到的字符是数字
+                        if (ch == '.') {
+                            ss << ch;
+                            current_state = DFAState::FLOAT_STATE;
+                        } else if (c0::isdigit(ch))  // 如果读到的字符是数字
                             ss << ch; // 存储读到的字符
                         else if (c0::isalpha(ch)) {
                             ss << ch; // 存储读到的字符
@@ -177,7 +263,8 @@ namespace c0 {
                             try {
                                 // 解析成功则返回无符号整数类型的token
                                 return std::make_pair(
-                                        std::make_optional<Token>(TokenType::UNSIGNED_INTEGER, std::stoi(ss.str()), pos,
+                                        std::make_optional<Token>(TokenType::UNSIGNED_INTEGER, std::stoi(ss.str()),
+                                                                  pos,
                                                                   currentPos()),
                                         std::optional<CompilationError>());
                             } catch (...) {
@@ -190,36 +277,250 @@ namespace c0 {
                     }
                     break;
                 }
+
+                case ZERO: {
+                    // 请填空：
+                    // 如果当前已经读到了文件尾，则解析已经读到的字符串为整数
+                    if (!current_char.has_value()) { // 当前已经读到了文件尾
+                        return std::make_pair(
+                                std::make_optional<Token>(TokenType::UNSIGNED_INTEGER, 0, pos,
+                                                          currentPos()),
+                                std::optional<CompilationError>());
+
+                    } else {
+                        // 获取读到的字符的值，注意auto推导出的类型是char
+                        auto ch = current_char.value();
+                        if (ch == '.') {
+                            ss << ch;
+                            current_state = DFAState::FLOAT_STATE;
+                        } else if (ch == 'x' || ch == 'X') {
+                            ss << ch;
+                            current_state = DFAState::HEX_STATE;
+                        } else if (c0::isdigit(ch)) // 如果读到的字符是数字，不能以0开头
+                            return std::make_pair(
+                                    std::optional<Token>(),
+                                    std::make_optional<CompilationError>(pos, ErrorCode::ErrNumberStartWithZero));
+                        else if (c0::isalpha(ch)) {
+                            ss << ch; // 存储读到的字符
+                            current_state = DFAState::IDENTIFIER_STATE; // 切换状态到标识符
+                        } else {
+                            unreadLast(); // 回退读到的字符
+                            // 解析已经读到的字符串为整数
+                            try {
+                                // 解析成功则返回无符号整数类型的token
+                                return std::make_pair(
+                                        std::make_optional<Token>(TokenType::UNSIGNED_INTEGER, std::stoi(ss.str()),
+                                                                  pos,
+                                                                  currentPos()),
+                                        std::optional<CompilationError>());
+                            } catch (...) {
+                                // 否则返回编译错误
+                                return std::make_pair(
+                                        std::optional<Token>(),
+                                        std::make_optional<CompilationError>(pos, ErrorCode::ErrIntegerOverflow));
+                            }
+                        }
+                    }
+                    break;
+                }
+
+                case HEX_STATE: {
+                    if (!current_char.has_value())
+                        return std::make_pair(
+                                std::make_optional<Token>(TokenType::HEX_INTEGER, ss.str(), pos,
+                                                          currentPos()),
+                                std::optional<CompilationError>());
+                    else {
+                        auto ch = current_char.value();
+                        if (c0::isdigit(ch) || (ch >= 'a' && ch <= 'f') || (ch >= 'A' && ch <= 'F'))  // 如果读到的字符是数字
+                            ss << ch; // 存储读到的字符
+                        else if (c0::isalpha(ch)) {
+                            ss << ch; // 存储读到的字符
+                            current_state = DFAState::IDENTIFIER_STATE; // 切换状态到标识符
+                        } else {
+                            unreadLast(); // 回退读到的字符
+                            return std::make_pair(
+                                    std::make_optional<Token>(TokenType::HEX_INTEGER, ss.str(), pos,
+                                                              currentPos()),
+                                    std::optional<CompilationError>());
+                        }
+                    }
+                    break;
+                }
+
+                case FLOAT_STATE: { // already have '.'
+                    if (!current_char.has_value()) {
+                        return std::make_pair(
+                                std::make_optional<Token>(TokenType::FLOATING_LITERAL, ss.str(), pos,
+                                                          currentPos()),
+                                std::optional<CompilationError>());
+                    } else {
+                        auto ch = current_char.value();
+                        if (ch == 'e' || ch == 'E') {
+                            ss << ch;
+                            current_state = DFAState::FLOAT_WITH_EXPONENT_STATE;
+                        } else if (c0::isdigit(ch))
+                            ss << ch;
+                        else {
+                            unreadLast(); // 回退读到的字符
+                            return std::make_pair(
+                                    std::make_optional<Token>(TokenType::FLOATING_LITERAL, ss.str(), pos,
+                                                              currentPos()),
+                                    std::optional<CompilationError>());
+                        }
+                    }
+                    break;
+                }
+
+                case FLOAT_WITH_EXPONENT_STATE: { // already have 'e' or 'E', now parsing the optional sign
+                    if (!current_char.has_value()) { // EOF after 'e'
+                        return std::make_pair(std::optional<Token>(),
+                                              std::make_optional<CompilationError>(pos, ErrorCode::ErrInvalidInput));
+                    } else {
+                        auto ch = current_char.value();
+                        if (ch == '+' || ch == '-') {
+                            ss << ch;
+                            current_state = FLOAT_WITH_EXPONENT_AND_OPTIONAL_SIGN_STATE;
+                        } else if (c0::isdigit(ch)) {
+                            unreadLast();
+                            current_state = FLOAT_WITH_EXPONENT_AND_OPTIONAL_SIGN_STATE;
+                        } else // no +/-/digit after e
+                            return std::make_pair(std::optional<Token>(),
+                                                  std::make_optional<CompilationError>(pos,
+                                                                                       ErrorCode::ErrInvalidInput));
+                    }
+                    break;
+                }
+
+                case FLOAT_WITH_EXPONENT_AND_OPTIONAL_SIGN_STATE: { // after optional sign, now we need at least one digit
+                    if (!current_char.has_value()) { // EOF after optional sign
+                        return std::make_pair(std::optional<Token>(),
+                                              std::make_optional<CompilationError>(pos, ErrorCode::ErrInvalidInput));
+                    } else {
+                        auto ch = current_char.value();
+                        if (c0::isdigit(ch)) {
+                            ss << ch;
+                            current_state = FLOAT_WITH_EXPONENT_OPTIONAL_SIGN_AND_DIGIT_SEQUENCE_STATE;
+                        } else // no digit after optional sign
+                            return std::make_pair(std::optional<Token>(),
+                                                  std::make_optional<CompilationError>(pos,
+                                                                                       ErrorCode::ErrInvalidInput));
+                    }
+                    break;
+                }
+
+                case FLOAT_WITH_EXPONENT_OPTIONAL_SIGN_AND_DIGIT_SEQUENCE_STATE: {
+                    if (!current_char.has_value())
+                        return std::make_pair(
+                                std::make_optional<Token>(TokenType::FLOATING_LITERAL, ss.str(), pos,
+                                                          currentPos()),
+                                std::optional<CompilationError>());
+                    else {
+                        auto ch = current_char.value();
+                        if (c0::isdigit(ch))
+                            ss << ch;
+                        else {
+                            unreadLast();
+                            return std::make_pair(
+                                    std::make_optional<Token>(TokenType::FLOATING_LITERAL, ss.str(), pos,
+                                                              currentPos()),
+                                    std::optional<CompilationError>());
+                        }
+                    }
+                    break;
+                }
+
+                case CHAR_LITERAL_STATE: {
+                    if (!current_char.has_value()) { // EOF after '
+                        return std::make_pair(std::optional<Token>(),
+                                              std::make_optional<CompilationError>(pos,
+                                                                                   ErrorCode::ErrInvalidCharLiteral));
+                    } else {
+                        auto ch = current_char.value();
+                        if (!c0::isprint(
+                                ch)) // TODO <c-char>可以是可接受字符集中，除了单引号'、反斜线\、换行符（0x0A, \n）、回车符（0x0D, \r）这四种字符的其他任意单字节字符
+                            return std::make_pair(std::optional<Token>(),
+                                                  std::make_optional<CompilationError>(pos,
+                                                                                       ErrorCode::ErrInvalidCharLiteral));
+                        if (escape) {
+                            auto escaped = getEscaped(ch);
+                            if (!escaped.has_value())
+                                return std::make_pair(std::optional<Token>(),
+                                                      std::make_optional<CompilationError>(pos,
+                                                                                           ErrorCode::ErrInvalidEscape));
+                            else {
+                                escape = false;
+                                ss << escaped.value();
+                            }
+                        } else {
+                            if (ch == '\\') // don't write to ss
+                                escape = true;
+                            else if (ch == '\'') {
+                                std::string str = ss.str();
+                                if (str.back() == '\'') // at least one char
+                                    return std::make_pair(std::optional<Token>(),
+                                                          std::make_optional<CompilationError>(pos,
+                                                                                               ErrorCode::ErrInvalidCharLiteral));
+                                else {
+                                    ss << ch;
+                                    return std::make_pair(
+                                            std::make_optional<Token>(TokenType::CHAR_LITERAL, ss.str(), pos,
+                                                                      currentPos()),
+                                            std::optional<CompilationError>()); // should not include '"', '//'...
+                                }
+                            } else ss << ch;
+                        }
+                    }
+                    break;
+                }
+
+                case STRING_LITERAL_STATE: {
+                    if (!current_char.has_value()) { // EOF after "
+                        return std::make_pair(std::optional<Token>(),
+                                              std::make_optional<CompilationError>(pos,
+                                                                                   ErrorCode::ErrInvalidStringLiteral));
+                    } else {
+                        auto ch = current_char.value();
+                        if (!c0::isprint(
+                                ch)) // TODO <s-char>可以是可接受字符集中，除了双引号"、反斜线\、换行符（0x0A, \n）、回车符（0x0D, \r）这四种字符的其他任意单字节字符
+                            return std::make_pair(std::optional<Token>(),
+                                                  std::make_optional<CompilationError>(pos,
+                                                                                       ErrorCode::ErrInvalidStringLiteral));
+                        if (escape) {
+                            auto escaped = getEscaped(ch);
+                            if (!escaped.has_value())
+                                return std::make_pair(std::optional<Token>(),
+                                                      std::make_optional<CompilationError>(pos,
+                                                                                           ErrorCode::ErrInvalidEscape));
+                            else {
+                                escape = false;
+                                ss << escaped.value();
+                            }
+                        } else {
+                            if (ch == '\\') // don't write to ss
+                                escape = true;
+                            else if (ch == '"') {
+                                ss << ch;
+                                return std::make_pair(
+                                        std::make_optional<Token>(TokenType::STRING_LITERAL, ss.str(), pos,
+                                                                  currentPos()),
+                                        std::optional<CompilationError>()); // should not include '"', '//'...
+                            }
+                            else ss << ch;
+                        }
+                    }
+                    break;
+                }
+
                 case IDENTIFIER_STATE: {
                     // 请填空：
                     // 如果当前已经读到了文件尾，则解析已经读到的字符串
                     if (!current_char.has_value()) {
                         auto str = ss.str();
                         //     如果解析结果是关键字，那么返回对应关键字的token，否则返回标识符的token
-                        if (str == "begin")
-                            return std::make_pair(
-                                    std::make_optional<Token>(TokenType::BEGIN, str, pos, currentPos()),
-                                    std::optional<CompilationError>());
-                        else if (str == "end")
-                            return std::make_pair(
-                                    std::make_optional<Token>(TokenType::END, str, pos, currentPos()),
-                                    std::optional<CompilationError>());
-                        else if (str == "const")
-                            return std::make_pair(
-                                    std::make_optional<Token>(TokenType::CONST, str, pos, currentPos()),
-                                    std::optional<CompilationError>());
-                        else if (str == "var")
-                            return std::make_pair(
-                                    std::make_optional<Token>(TokenType::VAR, str, pos, currentPos()),
-                                    std::optional<CompilationError>());
-                        else if (str == "print")
-                            return std::make_pair(
-                                    std::make_optional<Token>(TokenType::PRINT, str, pos, currentPos()),
-                                    std::optional<CompilationError>());
-                        else
-                            return std::make_pair(
-                                    std::make_optional<Token>(TokenType::IDENTIFIER, str, pos, currentPos()),
-                                    std::optional<CompilationError>());
+                        return std::make_pair(
+                                std::make_optional<Token>(getStringTokenType(str), str, pos, currentPos()),
+                                std::optional<CompilationError>());
                     } else {
                         // 如果读到的是字符或字母，则存储读到的字符
                         auto ch = current_char.value();
@@ -230,36 +531,15 @@ namespace c0 {
                             //     如果解析结果是关键字，那么返回对应关键字的token，否则返回标识符的token
                             unreadLast();
                             auto str = ss.str();
-                            if (str == "begin")
-                                return std::make_pair(
-                                        std::make_optional<Token>(TokenType::BEGIN, str, pos, currentPos()),
-                                        std::optional<CompilationError>());
-                            else if (str == "end")
-                                return std::make_pair(
-                                        std::make_optional<Token>(TokenType::END, str, pos, currentPos()),
-                                        std::optional<CompilationError>());
-                            else if (str == "const")
-                                return std::make_pair(
-                                        std::make_optional<Token>(TokenType::CONST, str, pos, currentPos()),
-                                        std::optional<CompilationError>());
-                            else if (str == "var")
-                                return std::make_pair(
-                                        std::make_optional<Token>(TokenType::VAR, str, pos, currentPos()),
-                                        std::optional<CompilationError>());
-                            else if (str == "print")
-                                return std::make_pair(
-                                        std::make_optional<Token>(TokenType::PRINT, str, pos, currentPos()),
-                                        std::optional<CompilationError>());
-                            else
-                                return std::make_pair(
-                                        std::make_optional<Token>(TokenType::IDENTIFIER, str, pos, currentPos()),
-                                        std::optional<CompilationError>());
+                            return std::make_pair(
+                                    std::make_optional<Token>(getStringTokenType(str), str, pos, currentPos()),
+                                    std::optional<CompilationError>());
                         }
                     }
                     break;
                 }
 
-                    // 如果当前状态是加号
+                    // 如果当前状态是加号 TODO 跳转到数字
                 case PLUS_SIGN_STATE: {
                     // 请思考这里为什么要回退，在其他地方会不会需要
                     // 因为break出去了，指向后面一位
@@ -314,6 +594,64 @@ namespace c0 {
                                           std::optional<CompilationError>());
                 }
 
+                case COMMA_STATE: {
+                    unreadLast();
+                    return std::make_pair(std::make_optional<Token>(TokenType::COMMA, ',', pos, currentPos()),
+                                          std::optional<CompilationError>());
+                }
+
+                case LEFTBRACE_STATE: {
+                    unreadLast();
+                    return std::make_pair(std::make_optional<Token>(TokenType::LEFT_BRACE, '{', pos, currentPos()),
+                                          std::optional<CompilationError>());
+                }
+
+                case RIGHTBRACE_STATE: {
+                    unreadLast();
+                    return std::make_pair(std::make_optional<Token>(TokenType::RIGHT_BRACE, '}', pos, currentPos()),
+                                          std::optional<CompilationError>());
+                }
+
+                case LESS_SIGN_STATE: {
+                    if (current_char.value() && current_char.value() == '=') {
+                        ss << current_char.value();
+                        return std::make_pair(
+                                std::make_optional<Token>(TokenType::LESS_OR_EQUAL_SIGN, ss.str(), pos, currentPos()),
+                                std::optional<CompilationError>());
+                    } else {
+                        unreadLast();
+                        return std::make_pair(std::make_optional<Token>(TokenType::LESS_SIGN, '<', pos, currentPos()),
+                                              std::optional<CompilationError>());
+                    }
+                }
+
+                case GREATER_SIGN_STATE: {
+                    if (current_char.has_value() && current_char.value() == '=') {
+                        ss << current_char.value();
+                        return std::make_pair(
+                                std::make_optional<Token>(TokenType::GREATER_OR_EQUAL_SIGN, ss.str(), pos,
+                                                          currentPos()),
+                                std::optional<CompilationError>());
+                    } else {
+                        unreadLast();
+                        return std::make_pair(
+                                std::make_optional<Token>(TokenType::GREATER_SIGN, '>', pos, currentPos()),
+                                std::optional<CompilationError>());
+                    }
+                }
+
+                case EXCLAMATION_SIGN_STATE: {
+                    if (current_char.value() && current_char.value() == '=') {
+                        ss << current_char.value();
+                        return std::make_pair(
+                                std::make_optional<Token>(TokenType::NOT_EQUAL_SIGN, ss.str(), pos, currentPos()),
+                                std::optional<CompilationError>());
+                    } else
+                        return std::make_pair(std::optional<Token>(),
+                                              std::make_optional<CompilationError>(pos, ErrorCode::ErrInvalidInput));
+                }
+
+
                     // 请填空：
                     // 对于其他的合法状态，进行合适的操作
                     // 比如进行解析、返回token、返回编译错误
@@ -325,7 +663,11 @@ namespace c0 {
             }
         }
         // 预料之外的状态，如果执行到了这里，说明程序异常
-        return std::make_pair(std::optional<Token>(), std::optional<CompilationError>());
+        return
+
+                std::make_pair(std::optional<Token>(), std::optional<CompilationError>()
+
+                );
     }
 
     std::optional<CompilationError> Tokenizer::checkToken(const Token &t) {
@@ -397,7 +739,7 @@ namespace c0 {
         return;
     }
 
-    // Note: We allow this function to return a postion which is out of bound according to the design like std::vector::end().
+// Note: We allow this function to return a postion which is out of bound according to the design like std::vector::end().
     std::pair<uint64_t, uint64_t> Tokenizer::nextPos() {
         if (_ptr.first >= _lines_buffer.size())
             DieAndPrint("advance after EOF");
@@ -432,8 +774,9 @@ namespace c0 {
         return _ptr.first >= _lines_buffer.size();
     }
 
-    // Note: Is it evil to unread a buffer?
+// Note: Is it evil to unread a buffer?
     void Tokenizer::unreadLast() {
         _ptr = previousPos();
     }
+
 }

@@ -36,7 +36,11 @@ namespace c0 {
 		ErrDuplicateDeclaration,
 		ErrNotInitialized,
 		ErrInvalidAssignment,
-		ErrInvalidPrint
+		ErrInvalidPrint,
+		ErrNumberStartWithZero,
+        ErrInvalidEscape,
+        ErrInvalidCharLiteral,
+        ErrInvalidStringLiteral
 	};
 
 	class CompilationError final{
