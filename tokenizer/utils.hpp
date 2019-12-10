@@ -18,4 +18,5 @@ namespace c0 {
 	IS_FUNC(isupper);
 	IS_FUNC(islower);
 	IS_FUNC(isdigit);
+	IS_FUNC(isxdigit);
 }

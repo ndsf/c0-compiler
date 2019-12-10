@@ -60,7 +60,7 @@ namespace c0 {
                 return '\r';
             case 't':
                 return '\t';
-                // TODO '\x'<hexadecimal-digit><hexadecimal-digit> I don't know what this means...
+                // TODO '\x'<hexadecimal-digit><hexadecimal-digit> I don't know what this means... \x11 we need a new state
             default:
                 return {};
         }
@@ -110,7 +110,7 @@ namespace c0 {
         DFAState current_state = DFAState::INITIAL_STATE;
         // 这是一个死循环，除非主动跳出
         // 每一次执行while内的代码，都可能导致状态的变更
-        auto escape = false;
+        std::string escape = ""; // bool escape = !escape.empty()
         while (true) {
             // 读一个字符，请注意auto推导得出的类型是std::optional<char>
             // 这里其实有两种写法
@@ -437,37 +437,52 @@ namespace c0 {
                                                                                    ErrorCode::ErrInvalidCharLiteral));
                     } else {
                         auto ch = current_char.value();
-                        if (!c0::isprint(
-                                ch)) // TODO <c-char>可以是可接受字符集中，除了单引号'、反斜线\、换行符（0x0A, \n）、回车符（0x0D, \r）这四种字符的其他任意单字节字符
+                        if (!c0::isprint(ch))
                             return std::make_pair(std::optional<Token>(),
                                                   std::make_optional<CompilationError>(pos,
                                                                                        ErrorCode::ErrInvalidCharLiteral));
-                        if (escape) {
-                            auto escaped = getEscaped(ch);
-                            if (!escaped.has_value())
-                                return std::make_pair(std::optional<Token>(),
-                                                      std::make_optional<CompilationError>(pos,
-                                                                                           ErrorCode::ErrInvalidEscape));
-                            else {
-                                escape = false;
-                                ss << escaped.value();
-                            }
-                        } else {
-                            if (ch == '\\') // don't write to ss
-                                escape = true;
-                            else if (ch == '\'') {
-                                std::string str = ss.str();
-                                if (str.back() == '\'') // at least one char
+                        if (!escape.empty()) { // in escape mode
+                            if (escape.length() >= 2 && escape[1] == 'x') { // \x
+                                if (c0::isxdigit(ch)) {
+                                    escape += ch; // \xA
+                                    if (escape.length() >= 4) { // store the result into ss
+                                        std::string s = "0x" + escape.substr(2);
+                                        unsigned int x = std::stoul(s, nullptr, 16);
+                                        ss << (char) x;
+                                        escape = ""; // exit escape mode
+                                    }
+                                } else // \xG
                                     return std::make_pair(std::optional<Token>(),
                                                           std::make_optional<CompilationError>(pos,
                                                                                                ErrorCode::ErrInvalidCharLiteral));
+                            } else if (escape.back() == '\\' && ch == 'x')
+                                escape += ch; // \x
+                            else {
+                                auto escaped = getEscaped(ch);
+                                if (!escaped.has_value())
+                                    return std::make_pair(std::optional<Token>(),
+                                                          std::make_optional<CompilationError>(pos,
+                                                                                               ErrorCode::ErrInvalidEscape));
                                 else {
-                                    ss << ch;
+                                    escape = ""; // exit escape mode
+                                    ss << escaped.value();
+                                }
+                            }
+                        } else {
+                            if (ch == '\\') // don't write to ss
+                                escape += ch; // \ ,
+                            else if (ch == '\'') {
+                                ss << ch;
+                                std::string str = ss.str();
+                                if (str.length() != 3) // 有一个char
+                                    return std::make_pair(std::optional<Token>(),
+                                                          std::make_optional<CompilationError>(pos,
+                                                                                               ErrorCode::ErrInvalidCharLiteral));
+                                else
                                     return std::make_pair(
                                             std::make_optional<Token>(TokenType::CHAR_LITERAL, ss.str(), pos,
                                                                       currentPos()),
-                                            std::optional<CompilationError>()); // should not include '"', '//'...
-                                }
+                                            std::optional<CompilationError>()); // should not include '"', '\\'...
                             } else ss << ch;
                         }
                     }
@@ -481,36 +496,52 @@ namespace c0 {
                                                                                    ErrorCode::ErrInvalidStringLiteral));
                     } else {
                         auto ch = current_char.value();
-                        if (!c0::isprint(
-                                ch)) // TODO <s-char>可以是可接受字符集中，除了双引号"、反斜线\、换行符（0x0A, \n）、回车符（0x0D, \r）这四种字符的其他任意单字节字符
+                        if (!c0::isprint(ch))
                             return std::make_pair(std::optional<Token>(),
                                                   std::make_optional<CompilationError>(pos,
                                                                                        ErrorCode::ErrInvalidStringLiteral));
-                        if (escape) {
-                            auto escaped = getEscaped(ch);
-                            if (!escaped.has_value())
-                                return std::make_pair(std::optional<Token>(),
-                                                      std::make_optional<CompilationError>(pos,
-                                                                                           ErrorCode::ErrInvalidEscape));
+                        if (!escape.empty()) {
+                            if (escape.length() >= 2 && escape[1] == 'x') { // \x
+                                if (c0::isxdigit(ch)) {
+                                    escape += ch; // \xA
+                                    if (escape.length() >= 4) { // store the result into ss
+                                        std::string s = "0x" + escape.substr(2);
+                                        unsigned int x = std::stoul(s, nullptr, 16);
+                                        ss << (char) x;
+                                        escape = ""; // exit escape mode
+                                    }
+                                } else // \xG
+                                    return std::make_pair(std::optional<Token>(),
+                                                          std::make_optional<CompilationError>(pos,
+                                                                                               ErrorCode::ErrInvalidCharLiteral));
+                            } else if (escape.back() == '\\' && ch == 'x')
+                                escape += ch; // \x
                             else {
-                                escape = false;
-                                ss << escaped.value();
+                                auto escaped = getEscaped(ch);
+                                if (!escaped.has_value())
+                                    return std::make_pair(std::optional<Token>(),
+                                                          std::make_optional<CompilationError>(pos,
+                                                                                               ErrorCode::ErrInvalidEscape));
+                                else {
+                                    escape = ""; // exit escape mode
+                                    ss << escaped.value();
+                                }
                             }
                         } else {
                             if (ch == '\\') // don't write to ss
-                                escape = true;
+                                escape += ch;
                             else if (ch == '"') {
                                 ss << ch;
                                 return std::make_pair(
                                         std::make_optional<Token>(TokenType::STRING_LITERAL, ss.str(), pos,
                                                                   currentPos()),
-                                        std::optional<CompilationError>()); // should not include '"', '//'...
-                            }
-                            else ss << ch;
+                                        std::optional<CompilationError>()); // should not include '"', '\\'...
+                            } else ss << ch;
                         }
                     }
                     break;
                 }
+
 
                 case IDENTIFIER_STATE: {
                     // 请填空：
