@@ -81,6 +81,18 @@ namespace fmt {
                 case c0::ErrInvalidStringLiteral:
                     name = "The string literal is invalid.";
                     break;
+                case c0::ErrNoBracket:
+                    name = "Need a bracket here.";
+                    break;
+                case c0::ErrNoTypeSpecifier:
+                    name = "Need a type specifier here.";
+                    break;
+                case c0::ErrNoBrace:
+                    name = "Need a brace here.";
+                    break;
+                case c0::ErrInvalidStatement:
+                    name = "The statement is invalid.";
+                    break;
             }
             return format_to(ctx.out(), name);
         }
@@ -233,7 +245,7 @@ namespace fmt {
                 case c0::SEMICOLON:
                     name = "Semicolon";
                     break;
-                case c0::ASSIGN:
+                case c0::ASSIGN_SIGN:
                     name = "Assign";
                     break;
                 case c0::STRUCT:

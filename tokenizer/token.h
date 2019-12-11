@@ -47,7 +47,7 @@ namespace c0 {
         RIGHT_BRACE,
         COMMA,
         SEMICOLON,
-        ASSIGN,
+        ASSIGN_SIGN,
 
         STRUCT,
         SWITCH,

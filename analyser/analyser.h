@@ -34,8 +34,17 @@ namespace c0 {
 
 		// <程序>
 		std::optional<CompilationError> analyseProgram();
+		std::optional<CompilationError> analyseFunctionDefinition();
+		std::optional<CompilationError> analyseParameterClause();
+		std::optional<CompilationError> analyseCompoundStatment();
+		std::optional<CompilationError> analyseStatement();
+		std::optional<CompilationError> analyseConditionStatement();
+		std::optional<CompilationError> analyseLoopStatement();
+		std::optional<CompilationError> analyseJumpStatement();
+		std::optional<CompilationError> analysePrintStatement();
+		std::optional<CompilationError> analyseScanStatement();
 		// <主过程>
-		std::optional<CompilationError> analyseMain();
+		// std::optional<CompilationError> analyseMain();
 		// <常量声明>
 		std::optional<CompilationError> analyseConstantDeclaration();
 		// <变量声明>

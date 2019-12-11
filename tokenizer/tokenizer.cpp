@@ -602,9 +602,16 @@ namespace c0 {
                 }
 
                 case EQUAL_SIGN_STATE: {
-                    unreadLast();
-                    return std::make_pair(std::make_optional<Token>(TokenType::EQUAL_SIGN, '=', pos, currentPos()),
-                                          std::optional<CompilationError>());
+                    if (current_char.value() && current_char.value() == '=') {
+                        ss << current_char.value();
+                        return std::make_pair(
+                                std::make_optional<Token>(TokenType::EQUAL_SIGN, ss.str(), pos, currentPos()),
+                                std::optional<CompilationError>());
+                    } else {
+                        unreadLast();
+                        return std::make_pair(std::make_optional<Token>(TokenType::ASSIGN_SIGN, '=', pos, currentPos()),
+                                              std::optional<CompilationError>());
+                    }
                 }
 
                 case SEMICOLON_STATE: {
@@ -720,7 +727,7 @@ namespace c0 {
         int n = prgm.length();
         std::string res;
 
-        // Flags to indicate that single line and multpile line comments
+        // Flags to indicate that single line and multiple line comments
         // have started or not.
         bool s_cmt = false;
         bool m_cmt = false;
@@ -729,9 +736,10 @@ namespace c0 {
         // Traverse the given program
         for (int i = 0; i < n; i++) {
             // If single line comment flag is on, then check for end of it
-            if (s_cmt == true && prgm[i] == '\n')
+            if (s_cmt == true && prgm[i] == '\n') {
                 s_cmt = false;
-
+                res += '\n';
+            }
                 // If multiple line comment is on, then check for end of it
             else if (m_cmt == true && prgm[i] == '*' && prgm[i + 1] == '/')
                 m_cmt = false, i++;

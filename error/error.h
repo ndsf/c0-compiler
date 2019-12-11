@@ -40,7 +40,11 @@ namespace c0 {
 		ErrNumberStartWithZero,
         ErrInvalidEscape,
         ErrInvalidCharLiteral,
-        ErrInvalidStringLiteral
+        ErrInvalidStringLiteral,
+        ErrNoBracket,
+        ErrNoTypeSpecifier,
+        ErrNoBrace,
+        ErrInvalidStatement
 	};
 
 	class CompilationError final{
