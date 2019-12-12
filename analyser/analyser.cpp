@@ -660,6 +660,47 @@ namespace c0 {
     }
 
     std::optional<CompilationError> Analyser::analysePrintStatement() {
+        // <print-statement> ::=
+        //     'print' '(' [<printable-list>] ')' ';'
+        // <printable-list>  ::=
+        //     <printable> {',' <printable>}
+        // <printable> ::=
+        //     <expression> | <string-literal>
+        auto next = nextToken();
+        if (!next.has_value() || next.value().GetType() != TokenType::PRINT)
+            return std::make_optional<CompilationError>(_current_pos, ErrorCode::ErrInvalidStatement);
+        next = nextToken(); // (
+        if (!next.has_value() || next.value().GetType() != TokenType::LEFT_BRACKET)
+            return std::make_optional<CompilationError>(_current_pos, ErrorCode::ErrNoBracket);
+
+        next = nextToken(); // )
+        if (!next.has_value() || next.value().GetType() != TokenType::RIGHT_BRACKET) {
+            // <printable-list>  ::=
+            //     <printable> {',' <printable>}
+            // <printable> ::=
+            //     <expression> | <string-literal>
+
+            next = nextToken();
+            if (!next.has_value())
+                return std::make_optional<CompilationError>(_current_pos, ErrorCode::ErrInvalidStatement);
+            switch (next.value().GetType()) {
+                case TokenType::STRING_LITERAL:
+                    break;
+                // TODO expression
+                default:
+                    return std::make_optional<CompilationError>(_current_pos, ErrorCode::ErrInvalidStatement);
+            }
+            next = nextToken(); // )
+            if (!next.has_value() || next.value().GetType() != TokenType::RIGHT_BRACKET)
+                return std::make_optional<CompilationError>(_current_pos, ErrorCode::ErrNoBracket);
+        }
+
+
+
+        next = nextToken(); // ;
+        if (!next.has_value() || next.value().GetType() != TokenType::SEMICOLON)
+            return std::make_optional<CompilationError>(_current_pos, ErrorCode::ErrNoSemicolon);
+
         return {};
     }
 
