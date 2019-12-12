@@ -680,22 +680,28 @@ namespace c0 {
             // <printable> ::=
             //     <expression> | <string-literal>
 
-            next = nextToken();
-            if (!next.has_value())
-                return std::make_optional<CompilationError>(_current_pos, ErrorCode::ErrInvalidStatement);
-            switch (next.value().GetType()) {
-                case TokenType::STRING_LITERAL:
-                    break;
-                // TODO expression
-                default:
+            // printable
+            while (true) {
+                next = nextToken();
+                if (!next.has_value())
                     return std::make_optional<CompilationError>(_current_pos, ErrorCode::ErrInvalidStatement);
+                if (next.value().GetType() == TokenType::STRING_LITERAL) {
+                    // do something
+                } else { // must be expression
+                    auto err = analyseExpression();
+                    if (err.has_value())
+                        return err;
+                }
+                next = nextToken(); // ,
+                if (!next.has_value() || next.value().GetType() != TokenType::COMMA) {
+                    unreadToken();
+                    break;
+                }
             }
             next = nextToken(); // )
             if (!next.has_value() || next.value().GetType() != TokenType::RIGHT_BRACKET)
                 return std::make_optional<CompilationError>(_current_pos, ErrorCode::ErrNoBracket);
         }
-
-
 
         next = nextToken(); // ;
         if (!next.has_value() || next.value().GetType() != TokenType::SEMICOLON)
