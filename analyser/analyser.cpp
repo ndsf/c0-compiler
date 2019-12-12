@@ -624,6 +624,38 @@ namespace c0 {
         //    |'continue' ';'
         //    |<return-statement>
         // <return-statement> ::= 'return' [<expression>] ';'
+        auto next = nextToken();
+        if (!next.has_value())
+            return std::make_optional<CompilationError>(_current_pos, ErrorCode::ErrInvalidStatement);
+        switch (next.value().GetType()) {
+            case TokenType::BREAK: {
+                next = nextToken(); // ;
+                if (!next.has_value() || next.value().GetType() != TokenType::SEMICOLON)
+                    return std::make_optional<CompilationError>(_current_pos, ErrorCode::ErrNoSemicolon);
+                break;
+            }
+            case TokenType::CONTINUE: {
+                next = nextToken(); // ;
+                if (!next.has_value() || next.value().GetType() != TokenType::SEMICOLON)
+                    return std::make_optional<CompilationError>(_current_pos, ErrorCode::ErrNoSemicolon);
+                break;
+            }
+            case TokenType::RETURN: {
+                next = nextToken(); // ;
+                if (!next.has_value() || next.value().GetType() != TokenType::SEMICOLON) {
+                    unreadToken();
+                    auto err = analyseExpression();
+                    if (err.has_value())
+                        return err;
+                    next = nextToken(); // ;
+                    if (!next.has_value() || next.value().GetType() != TokenType::SEMICOLON)
+                        return std::make_optional<CompilationError>(_current_pos, ErrorCode::ErrNoSemicolon);
+                }
+                break;
+            }
+            default:
+                return std::make_optional<CompilationError>(_current_pos, ErrorCode::ErrInvalidStatement);
+        }
         return {};
     }
 
