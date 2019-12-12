@@ -93,6 +93,9 @@ namespace fmt {
                 case c0::ErrInvalidStatement:
                     name = "The statement is invalid.";
                     break;
+                case c0::ErrIncompleteConditionStatement:
+                    name = "The condition statement is incomplete.";
+                    break;
             }
             return format_to(ctx.out(), name);
         }

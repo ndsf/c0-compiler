@@ -325,12 +325,17 @@ namespace c0 {
                 }
 
                 case HEX_STATE: {
-                    if (!current_char.has_value())
-                        return std::make_pair(
-                                std::make_optional<Token>(TokenType::HEX_INTEGER, ss.str(), pos,
-                                                          currentPos()),
-                                std::optional<CompilationError>());
-                    else {
+                    if (!current_char.has_value()) {
+                        if (ss.str().back() == 'x' || ss.str().back() == 'X') // need at least one hexadecimal-digit
+                            return std::make_pair(std::optional<Token>(),
+                                                  std::make_optional<CompilationError>(pos,
+                                                                                       ErrorCode::ErrInvalidInput));
+                        else
+                            return std::make_pair(
+                                    std::make_optional<Token>(TokenType::HEX_INTEGER, ss.str(), pos,
+                                                              currentPos()),
+                                    std::optional<CompilationError>());
+                    } else {
                         auto ch = current_char.value();
                         if (c0::isdigit(ch) || (ch >= 'a' && ch <= 'f') || (ch >= 'A' && ch <= 'F'))  // 如果读到的字符是数字
                             ss << ch; // 存储读到的字符
@@ -339,10 +344,15 @@ namespace c0 {
                             current_state = DFAState::IDENTIFIER_STATE; // 切换状态到标识符
                         } else {
                             unreadLast(); // 回退读到的字符
-                            return std::make_pair(
-                                    std::make_optional<Token>(TokenType::HEX_INTEGER, ss.str(), pos,
-                                                              currentPos()),
-                                    std::optional<CompilationError>());
+                            if (ss.str().back() == 'x' || ss.str().back() == 'X') // need at least one hexadecimal-digit
+                                return std::make_pair(std::optional<Token>(),
+                                                      std::make_optional<CompilationError>(pos,
+                                                                                           ErrorCode::ErrInvalidInput));
+                            else
+                                return std::make_pair(
+                                        std::make_optional<Token>(TokenType::HEX_INTEGER, ss.str(), pos,
+                                                                  currentPos()),
+                                        std::optional<CompilationError>());
                         }
                     }
                     break;

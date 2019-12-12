@@ -44,7 +44,8 @@ namespace c0 {
         ErrNoBracket,
         ErrNoTypeSpecifier,
         ErrNoBrace,
-        ErrInvalidStatement
+        ErrInvalidStatement,
+        ErrIncompleteConditionStatement
 	};
 
 	class CompilationError final{
