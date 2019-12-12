@@ -251,7 +251,7 @@ namespace fmt {
                 case c0::SEMICOLON:
                     name = "Semicolon";
                     break;
-                case c0::ASSIGN_SIGN:
+                case c0::ASSIGNMENT_OPERATOR:
                     name = "Assign";
                     break;
                 case c0::STRUCT:

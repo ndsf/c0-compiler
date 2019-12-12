@@ -79,7 +79,7 @@ namespace c0 {
 
                 // optional initializer
                 next = nextToken();
-                if (next.has_value() && next.value().GetType() == TokenType::ASSIGN_SIGN) {
+                if (next.has_value() && next.value().GetType() == TokenType::ASSIGNMENT_OPERATOR) {
                     auto err = analyseExpression();
                     if (err.has_value())
                         return err;
@@ -375,8 +375,7 @@ namespace c0 {
                                       next.value().GetType() != TokenType::EQUAL_SIGN)) {
                 unreadToken();
                 break; // finish
-            }
-            else {
+            } else {
                 auto err = analyseExpression();
                 if (err.has_value())
                     return err;
@@ -470,10 +469,161 @@ namespace c0 {
     }
 
     std::optional<CompilationError> Analyser::analyseLoopStatement() {
+        /*
+        <loop-statement> ::=
+            'while' '(' <condition> ')' <statement>
+           |'do' <statement> 'while' '(' <condition> ')' ';'
+           |'for' '('<for-init-statement> [<condition>]';' [<for-update-expression>]')' <statement>
+        */
+        auto next = nextToken();
+        if (!next.has_value())
+            return std::make_optional<CompilationError>(_current_pos, ErrorCode::ErrInvalidStatement);
+        switch (next.value.GetType()) {
+            case TokenType::WHILE: {
+                next = nextToken(); // (
+                if (!next.has_value() || next.value().GetType() != TokenType::LEFT_BRACKET)
+                    return std::make_optional<CompilationError>(_current_pos, ErrorCode::ErrInvalidStatement);
+                auto err = analyseCondition();
+                if (err.has_value())
+                    return err;
+                next = nextToken(); // )
+                if (!next.has_value() || next.value().GetType() != TokenType::RIGHT_BRACKET)
+                    return std::make_optional<CompilationError>(_current_pos, ErrorCode::ErrInvalidStatement);
+                err = analyseStatement();
+                if (err.has_value())
+                    return err;
+                break;
+            }
+            case TokenType::DO: {
+                // 'do' <statement> 'while' '(' <condition> ')' ';'
+                err = analyseStatement();
+                if (err.has_value())
+                    return err;
+                next = nextToken(); // while
+                if (!next.has_value() || next.value().GetType() != TokenType::WHILE)
+                    return std::make_optional<CompilationError>(_current_pos, ErrorCode::ErrInvalidStatement);
+                next = nextToken(); // (
+                if (!next.has_value() || next.value().GetType() != TokenType::LEFT_BRACKET)
+                    return std::make_optional<CompilationError>(_current_pos, ErrorCode::ErrInvalidStatement);
+                auto err = analyseCondition();
+                if (err.has_value())
+                    return err;
+                next = nextToken(); // )
+                if (!next.has_value() || next.value().GetType() != TokenType::RIGHT_BRACKET)
+                    return std::make_optional<CompilationError>(_current_pos, ErrorCode::ErrInvalidStatement);
+                next = nextToken(); // ;
+                if (!next.has_value() || next.value().GetType() != TokenType::SEMICOLON)
+                    return std::make_optional<CompilationError>(_current_pos, ErrorCode::ErrNoSemicolon);
+                break;
+            }
+            case TokenType::FOR: {
+                next = nextToken(); // (
+                if (!next.has_value() || next.value().GetType() != TokenType::LEFT_BRACKET)
+                    return std::make_optional<CompilationError>(_current_pos, ErrorCode::ErrInvalidStatement);
+                /*'for' '('<for-init-statement> [<condition>]';' [<for-update-expression>]')' <statement>
+                <for-init-statement> ::=
+                    [<assignment-expression>{','<assignment-expression>}]';'
+                <for-update-expression> ::=
+                    (<assignment-expression>|<function-call>){','(<assignment-expression>|<function-call>)}
+                */
+                next = nextToken(); // <for-init-statement>
+                if (!next.has_value() || next.value().GetType() != TokenType::SEMICOLON) {
+                    unreadToken();
+                    while (true) {
+                        auto err = analyseAssignmentExpression();
+                        if (err.has_value())
+                            return err;
+                        next = nextToken();
+                        if (!next.has_value() || next.value().GetType() != TokenType::COMMA) // ','
+                            break; // finish
+                    }
+                    next = nextToken(); // ;
+                    if (!next.has_value() || next.value().GetType() != TokenType::SEMICOLON)
+                        return std::make_optional<CompilationError>(_current_pos, ErrorCode::ErrNoSemicolon);
+                }
+
+                next = nextToken(); // [<condition>]
+                if (!next.has_value() || next.value().GetType() != TokenType::SEMICOLON) {
+                    unreadToken();
+                    auto err = analyseCondition();
+                    if (err.has_value())
+                        return err;
+                    next = nextToken(); // ;
+                    if (!next.has_value() || next.value().GetType() != TokenType::SEMICOLON)
+                        return std::make_optional<CompilationError>(_current_pos, ErrorCode::ErrNoSemicolon);
+                }
+
+                next = nextToken(); // [<for-update-expression>]')'
+                if (!next.has_value() || next.value().GetType() != TokenType::RIGHT_BRACKET) {
+                    // (<assignment-expression>|<function-call>){','(<assignment-expression>|<function-call>)}
+                    // <assignment-expression> ::= <identifier><assignment-operator><expression>
+                    // <function-call> ::= <identifier> '(' [<expression-list>] ')'
+                    // <expression-list> ::=
+                    //    <expression>{','<expression>}
+                    while (true) {
+                        if (!next.has_value() && next.value().GetType() != TokenType::IDENTIFIER)
+                            return std::make_optional<CompilationError>(_current_pos, ErrorCode::ErrNeedIdentifier);
+
+                        next = nextToken();
+                        if (!next.has_value())
+                            return std::make_optional<CompilationError>(_current_pos, ErrorCode::ErrInvalidStatement);
+                        else if (next.value().GetType() ==
+                                 TokenType::ASSIGNMENT_OPERATOR) { // <assignment-expression> ::= <identifier><assignment-operator><expression>
+                            auto err = analyseExpression();
+                            if (err.has_value())
+                                return err;
+                        } else if (next.value().GetType() ==
+                                   TokenType::LEFT_BRACKET) { // <function-call> ::= <identifier> '(' [<expression-list>] ')'
+                            next = nextToken();
+                            if (!next.has_value())
+                                return std::make_optional<CompilationError>(_current_pos, ErrorCode::ErrNoBracket);
+                            else if (next.value().GetType() == TokenType::RIGHT_BRACKET)
+                                break;
+                            else {
+                                while (true) {
+                                    auto err = analyseExpression();
+                                    if (err.has_value())
+                                        return err;
+                                    next = nextToken();
+                                    if (!next.has_value() || next.value().GetType() != TokenType::COMMA) {
+                                        unreadToken();
+                                        break;
+                                    }
+                                }
+                                next = nextToken(); // )
+                                if (!next.has_value() || next.value().GetType() != TokenType::RIGHT_BRACKET)
+                                    return std::make_optional<CompilationError>(_current_pos, ErrorCode::ErrNoBracket);
+                            }
+                        } else
+                            return std::make_optional<CompilationError>(_current_pos, ErrorCode::ErrInvalidStatement);
+
+                        next = nextToken();
+                        if (!next.has_value() || next.value().GetType() != TokenType::COMMA) {
+                            unreadToken();
+                            break;
+                        }
+                    }
+                    next = nextToken(); // )
+                    if (!next.has_value() || next.value().GetType() != TokenType::RIGHT_BRACKET)
+                        return std::make_optional<CompilationError>(_current_pos, ErrorCode::ErrInvalidStatement);
+                }
+                auto err = analyseStatement();
+                if (err.has_value())
+                    return err;
+                break;
+            }
+            default:
+                return std::make_optional<CompilationError>(_current_pos, ErrorCode::ErrInvalidStatement);
+        }
         return {};
     }
 
     std::optional<CompilationError> Analyser::analyseJumpStatement() {
+        // <jump-statement> ::=
+        //     'break' ';'
+        //    |'continue' ';'
+        //    |<return-statement>
+        // <return-statement> ::= 'return' [<expression>] ';'
         return {};
     }
 
@@ -667,13 +817,9 @@ namespace c0 {
         return {};
     }
 
-    // <赋值语句> ::= <标识符>'='<表达式>';'
-    // 需要补全
-    std::optional<CompilationError> Analyser::analyseAssignmentStatement() {
-        // 这里除了语法分析以外还要留意
-        // 标识符声明过吗？
-        // 标识符是常量吗？
-        // 需要生成指令吗？
+    std::optional<CompilationError> Analyser::analyseAssignmentExpression() {
+        // <assignment-expression> ::= <identifier><assignment-operator><expression>
+        // 这里除了语法分析以外还要留意 标识符声明过吗？ 标识符是常量吗？ 需要生成指令吗？
         auto next = nextToken();
         if (!next.has_value() || next.value().GetType() != TokenType::IDENTIFIER)
             return std::make_optional<CompilationError>(_current_pos, ErrorCode::ErrNeedIdentifier);
@@ -690,16 +836,15 @@ namespace c0 {
         }
 
         next = nextToken(); // '='
-        if (!next.has_value() || next.value().GetType() != TokenType::EQUAL_SIGN)
+        if (!next.has_value() ||
+            next.value().GetType() !=
+            TokenType::ASSIGNMENT_OPERATOR) // NOTE that ASSIGNMENT_OPERATOR='=', EQUAL_SIGN='=='
             return std::make_optional<CompilationError>(_current_pos, ErrorCode::ErrInvalidAssignment);
 
         auto err = analyseExpression();
         if (err.has_value())
             return err;
-        // ';'
-        next = nextToken();
-        if (!next.has_value() || next.value().GetType() != TokenType::SEMICOLON)
-            return std::make_optional<CompilationError>(_current_pos, ErrorCode::ErrNoSemicolon);
+        // no semicolon
         _instructions.emplace_back(Operation::STO, getIndex(str));
         return {};
     }

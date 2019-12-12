@@ -622,7 +622,7 @@ namespace c0 {
                                 std::optional<CompilationError>());
                     } else {
                         unreadLast();
-                        return std::make_pair(std::make_optional<Token>(TokenType::ASSIGN_SIGN, '=', pos, currentPos()),
+                        return std::make_pair(std::make_optional<Token>(TokenType::ASSIGNMENT_OPERATOR, '=', pos, currentPos()),
                                               std::optional<CompilationError>());
                     }
                 }

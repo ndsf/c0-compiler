@@ -48,7 +48,7 @@ namespace c0 {
         COMMA,
         COLON,
         SEMICOLON,
-        ASSIGN_SIGN,
+        ASSIGNMENT_OPERATOR,
 
         STRUCT,
         SWITCH,

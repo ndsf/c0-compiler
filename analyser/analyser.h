@@ -58,7 +58,7 @@ namespace c0 {
 		// <表达式>
 		std::optional<CompilationError> analyseExpression();
 		// <赋值语句>
-		std::optional<CompilationError> analyseAssignmentStatement();
+		std::optional<CompilationError> analyseAssignmentExpression();
 		// <输出语句>
 		std::optional<CompilationError> analyseOutputStatement();
 		// <项>
