@@ -35,7 +35,7 @@ namespace c0 {
 //        auto ed = nextToken();
 //        if (!ed.has_value() || ed.value().GetType() != TokenType::END)
 //            return std::make_optional<CompilationError>(_current_pos, ErrorCode::ErrNoEnd);
-//        return {};
+        return {};
     }
 
     std::optional<CompilationError> Analyser::analyseVariableDeclaration() {
@@ -138,6 +138,7 @@ namespace c0 {
         err = analyseCompoundStatment();
         if (err.has_value())
             return err;
+        return {};
     }
 
     std::optional<CompilationError> Analyser::analyseParameterClause() {
@@ -212,7 +213,7 @@ namespace c0 {
         next = nextToken();
         if (!next.has_value() || next.value().GetType() != TokenType::LEFT_BRACE)
             return std::make_optional<CompilationError>(_current_pos, ErrorCode::ErrNoBrace);
-
+        return {};
     }
 
     std::optional<CompilationError> Analyser::analyseStatementSequence() {
@@ -355,28 +356,30 @@ namespace c0 {
             default:
                 break;
         }
+        return {};
     }
 
     std::optional<CompilationError> Analyser::analyseConditionStatement() {
         auto next = nextToken();
         if (!next.has_value() || next.value().GetType() != TokenType::IF)
             return std::make_optional<CompilationError>(_current_pos, ErrorCode::ErrInvalidStatement);
+        return {};
     }
 
     std::optional<CompilationError> Analyser::analyseLoopStatement() {
-
+        return {};
     }
 
     std::optional<CompilationError> Analyser::analyseJumpStatement() {
-
+        return {};
     }
 
     std::optional<CompilationError> Analyser::analysePrintStatement() {
-
+        return {};
     }
 
     std::optional<CompilationError> Analyser::analyseScanStatement() {
-
+        return {};
     }
 
     // <主过程> ::= <常量声明><变量声明><语句序列> DEPRECATED
