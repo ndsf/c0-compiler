@@ -367,7 +367,20 @@ namespace c0 {
             return err;
         while (true) {
             auto next = nextToken(); // relational-operator
-            if (!next.has_value() && next.value().GetType() != )
+            if (!next.has_value() || (next.value().GetType() != TokenType::LESS_SIGN &&
+                                      next.value().GetType() != TokenType::LESS_OR_EQUAL_SIGN &&
+                                      next.value().GetType() != TokenType::GREATER_SIGN &&
+                                      next.value().GetType() != TokenType::GREATER_OR_EQUAL_SIGN &&
+                                      next.value().GetType() != TokenType::NOT_EQUAL_SIGN &&
+                                      next.value().GetType() != TokenType::EQUAL_SIGN)) {
+                unreadToken();
+                break; // finish
+            }
+            else {
+                auto err = analyseExpression();
+                if (err.has_value())
+                    return err;
+            }
         }
         return {};
     }
@@ -377,7 +390,8 @@ namespace c0 {
                  'if' '(' <condition> ')' <statement> ['else' <statement>]
         |'switch' '(' <expression> ')' '{' {<labeled-statement>} '}'*/
         auto next = nextToken(); // 'IF'
-        if (!next.has_value() || (next.value().GetType() != TokenType::IF && next.value().GetType() != TokenType::SWITCH))
+        if (!next.has_value() ||
+            (next.value().GetType() != TokenType::IF && next.value().GetType() != TokenType::SWITCH))
             return std::make_optional<CompilationError>(_current_pos, ErrorCode::ErrInvalidStatement);
 
         if (next.value().GetType() == TokenType::IF) {
@@ -423,7 +437,8 @@ namespace c0 {
             while (true) { // {<labeled-statement>}
                 // <labeled-statement> ::= 'case' (<integer-literal>|<char-literal>) ':' <statement> |'default' ':' <statement>
                 next = nextToken(); // case or default
-                if (!next.has_value() || (next.value().GetType() != TokenType::CASE && next.value().GetType() != TokenType::DEFAULT)) // finished
+                if (!next.has_value() || (next.value().GetType() != TokenType::CASE &&
+                                          next.value().GetType() != TokenType::DEFAULT)) // finished
                     break;
                 if (next.value().GetType() == TokenType::CASE) {
                     next = nextToken(); // (<integer-literal>|<char-literal>)
