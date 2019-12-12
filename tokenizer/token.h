@@ -30,7 +30,7 @@ namespace c0 {
         MINUS_SIGN,
         MULTIPLICATION_SIGN,
         DIVISION_SIGN,
-        UNSIGNED_INTEGER,
+        DECIMAL_LITERAL,
         HEX_INTEGER,
         FLOATING_LITERAL,
         GREATER_SIGN,
@@ -46,6 +46,7 @@ namespace c0 {
         LEFT_BRACE,
         RIGHT_BRACE,
         COMMA,
+        COLON,
         SEMICOLON,
         ASSIGN_SIGN,
 

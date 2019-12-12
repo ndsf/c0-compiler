@@ -200,7 +200,7 @@ namespace fmt {
                 case c0::DIVISION_SIGN:
                     name = "DivisionSign";
                     break;
-                case c0::UNSIGNED_INTEGER:
+                case c0::DECIMAL_LITERAL:
                     name = "UnsignedInteger";
                     break;
                 case c0::FLOATING_LITERAL:
@@ -244,6 +244,9 @@ namespace fmt {
                     break;
                 case c0::COMMA:
                     name = "Comma";
+                    break;
+                case c0::COLON:
+                    name = "Colon";
                     break;
                 case c0::SEMICOLON:
                     name = "Semicolon";

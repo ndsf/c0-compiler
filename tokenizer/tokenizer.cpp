@@ -165,6 +165,9 @@ namespace c0 {
                             case '/':
                                 current_state = DFAState::DIVISION_SIGN_STATE;
                                 break;
+                            case ':':
+                                current_state = DFAState::COLON_STATE;
+                                break;
                             case ';':
                                 current_state = DFAState::SEMICOLON_STATE;
                                 break;
@@ -231,7 +234,7 @@ namespace c0 {
                         try {
                             // 解析成功则返回无符号整数类型的token
                             return std::make_pair(
-                                    std::make_optional<Token>(TokenType::UNSIGNED_INTEGER, std::stoi(ss.str()), pos,
+                                    std::make_optional<Token>(TokenType::DECIMAL_LITERAL, std::stoi(ss.str()), pos,
                                                               currentPos()),
                                     std::optional<CompilationError>());
                         } catch (...) {
@@ -263,7 +266,7 @@ namespace c0 {
                             try {
                                 // 解析成功则返回无符号整数类型的token
                                 return std::make_pair(
-                                        std::make_optional<Token>(TokenType::UNSIGNED_INTEGER, std::stoi(ss.str()),
+                                        std::make_optional<Token>(TokenType::DECIMAL_LITERAL, std::stoi(ss.str()),
                                                                   pos,
                                                                   currentPos()),
                                         std::optional<CompilationError>());
@@ -283,7 +286,7 @@ namespace c0 {
                     // 如果当前已经读到了文件尾，则解析已经读到的字符串为整数
                     if (!current_char.has_value()) { // 当前已经读到了文件尾
                         return std::make_pair(
-                                std::make_optional<Token>(TokenType::UNSIGNED_INTEGER, 0, pos,
+                                std::make_optional<Token>(TokenType::DECIMAL_LITERAL, 0, pos,
                                                           currentPos()),
                                 std::optional<CompilationError>());
 
@@ -309,7 +312,7 @@ namespace c0 {
                             try {
                                 // 解析成功则返回无符号整数类型的token
                                 return std::make_pair(
-                                        std::make_optional<Token>(TokenType::UNSIGNED_INTEGER, std::stoi(ss.str()),
+                                        std::make_optional<Token>(TokenType::DECIMAL_LITERAL, std::stoi(ss.str()),
                                                                   pos,
                                                                   currentPos()),
                                         std::optional<CompilationError>());
@@ -622,6 +625,12 @@ namespace c0 {
                         return std::make_pair(std::make_optional<Token>(TokenType::ASSIGN_SIGN, '=', pos, currentPos()),
                                               std::optional<CompilationError>());
                     }
+                }
+
+                case COLON_STATE: {
+                    unreadLast();
+                    return std::make_pair(std::make_optional<Token>(TokenType::COLON, ':', pos, currentPos()),
+                                          std::optional<CompilationError>());
                 }
 
                 case SEMICOLON_STATE: {

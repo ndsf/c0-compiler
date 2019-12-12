@@ -36,6 +36,7 @@ namespace c0 {
             IDENTIFIER_STATE,
             EQUAL_SIGN_STATE, // =
             COMMA_STATE, // ,
+            COLON_STATE, // :
             SEMICOLON_STATE, // ;
             LEFTBRACKET_STATE, // (
             RIGHTBRACKET_STATE, // )

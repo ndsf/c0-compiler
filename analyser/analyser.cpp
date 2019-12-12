@@ -359,10 +359,98 @@ namespace c0 {
         return {};
     }
 
+    std::optional<CompilationError> Analyser::analyseCondition() {
+        // <condition> ::= <expression>[<relational-operator><expression>]
+        // <relational-operator>     ::= '<' | '<=' | '>' | '>=' | '!=' | '=='
+        auto err = analyseExpression();
+        if (err.has_value())
+            return err;
+        while (true) {
+            auto next = nextToken(); // relational-operator
+            if (!next.has_value() && next.value().GetType() != )
+        }
+        return {};
+    }
+
     std::optional<CompilationError> Analyser::analyseConditionStatement() {
-        auto next = nextToken();
-        if (!next.has_value() || next.value().GetType() != TokenType::IF)
+        /*<condition-statement> ::=
+                 'if' '(' <condition> ')' <statement> ['else' <statement>]
+        |'switch' '(' <expression> ')' '{' {<labeled-statement>} '}'*/
+        auto next = nextToken(); // 'IF'
+        if (!next.has_value() || (next.value().GetType() != TokenType::IF && next.value().GetType() != TokenType::SWITCH))
             return std::make_optional<CompilationError>(_current_pos, ErrorCode::ErrInvalidStatement);
+
+        if (next.value().GetType() == TokenType::IF) {
+            next = nextToken(); // (
+            if (!next.has_value() || next.value().GetType() != TokenType::LEFT_BRACKET)
+                return std::make_optional<CompilationError>(_current_pos, ErrorCode::ErrInvalidStatement);
+
+            auto err = analyseCondition();
+            if (err.has_value())
+                return err;
+
+            next = nextToken(); // )
+            if (!next.has_value() || next.value().GetType() != TokenType::RIGHT_BRACKET)
+                return std::make_optional<CompilationError>(_current_pos, ErrorCode::ErrInvalidStatement);
+
+            err = analyseStatement(); // statement
+            if (err.has_value())
+                return err;
+
+            next = nextToken(); // optional else
+            if (next.has_value() && next.value().GetType() == TokenType::ELSE) {
+                err = analyseStatement(); // statement
+                if (err.has_value())
+                    return err;
+            } else unreadToken();
+        } else { // switch
+            next = nextToken(); // (
+            if (!next.has_value() || next.value().GetType() != TokenType::LEFT_BRACKET)
+                return std::make_optional<CompilationError>(_current_pos, ErrorCode::ErrInvalidStatement);
+
+            auto err = analyseExpression();
+            if (err.has_value())
+                return err;
+
+            next = nextToken(); // )
+            if (!next.has_value() || next.value().GetType() != TokenType::RIGHT_BRACKET)
+                return std::make_optional<CompilationError>(_current_pos, ErrorCode::ErrInvalidStatement);
+
+            next = nextToken(); // {
+            if (!next.has_value() || next.value().GetType() != TokenType::LEFT_BRACE)
+                return std::make_optional<CompilationError>(_current_pos, ErrorCode::ErrInvalidStatement);
+
+            while (true) { // {<labeled-statement>}
+                // <labeled-statement> ::= 'case' (<integer-literal>|<char-literal>) ':' <statement> |'default' ':' <statement>
+                next = nextToken(); // case or default
+                if (!next.has_value() || (next.value().GetType() != TokenType::CASE && next.value().GetType() != TokenType::DEFAULT)) // finished
+                    break;
+                if (next.value().GetType() == TokenType::CASE) {
+                    next = nextToken(); // (<integer-literal>|<char-literal>)
+                    if (!next.has_value() || (next.value().GetType() != TokenType::DECIMAL_LITERAL &&
+                                              next.value().GetType() != TokenType::CHAR_LITERAL))
+                        return std::make_optional<CompilationError>(_current_pos, ErrorCode::ErrInvalidStatement);
+                    next = nextToken(); // :
+                    if (!next.has_value() || next.value().GetType() != TokenType::COLON)
+                        return std::make_optional<CompilationError>(_current_pos, ErrorCode::ErrInvalidStatement);
+                    err = analyseStatement();
+                    if (err.has_value())
+                        return err;
+                } else {
+                    next = nextToken(); // :
+                    if (!next.has_value() || next.value().GetType() != TokenType::COLON)
+                        return std::make_optional<CompilationError>(_current_pos, ErrorCode::ErrInvalidStatement);
+                    err = analyseStatement();
+                    if (err.has_value())
+                        return err;
+                }
+            }
+
+            next = nextToken(); // }
+            if (!next.has_value() || next.value().GetType() != TokenType::RIGHT_BRACE)
+                return std::make_optional<CompilationError>(_current_pos, ErrorCode::ErrInvalidStatement);
+
+        }
         return {};
     }
 
@@ -691,7 +779,7 @@ namespace c0 {
                 _instructions.emplace_back(Operation::LOD, getIndex(next.value().GetValueString()));
                 break;
             }
-            case TokenType::UNSIGNED_INTEGER: {
+            case TokenType::DECIMAL_LITERAL: {
                 _instructions.emplace_back(Operation::LIT, std::stoi(next.value().GetValueString()));
                 break;
             }

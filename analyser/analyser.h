@@ -38,6 +38,7 @@ namespace c0 {
 		std::optional<CompilationError> analyseParameterClause();
 		std::optional<CompilationError> analyseCompoundStatment();
 		std::optional<CompilationError> analyseStatement();
+        std::optional<CompilationError> analyseCondition();
 		std::optional<CompilationError> analyseConditionStatement();
 		std::optional<CompilationError> analyseLoopStatement();
 		std::optional<CompilationError> analyseJumpStatement();
