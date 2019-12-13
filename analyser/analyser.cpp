@@ -1010,7 +1010,7 @@ namespace c0 {
         auto next = nextToken();
         if (!next.has_value() || next.value().GetType() != TokenType::IDENTIFIER)
             return std::make_optional<CompilationError>(_current_pos, ErrorCode::ErrNeedIdentifier);
-        auto next = nextToken();
+        next = nextToken();
         if (!next.has_value() || next.value().GetType() != TokenType::LEFT_BRACKET)
             return std::make_optional<CompilationError>(_current_pos, ErrorCode::ErrNoBracket);
         next = nextToken();
