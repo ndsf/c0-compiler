@@ -99,6 +99,9 @@ namespace fmt {
                 case c0::ErrNoMain:
                     name = "Main function is not defined.";
                     break;
+                case c0::ErrSurplusTokenAfterFunctionDefinition:
+                    name = "Found surplus token after function definition.";
+                    break;
             }
             return format_to(ctx.out(), name);
         }

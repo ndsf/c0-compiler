@@ -46,7 +46,8 @@ namespace c0 {
         ErrNoBrace,
         ErrInvalidStatement,
         ErrIncompleteConditionStatement,
-        ErrNoMain
+        ErrNoMain,
+        ErrSurplusTokenAfterFunctionDefinition
 	};
 
 	class CompilationError final{

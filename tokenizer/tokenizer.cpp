@@ -10,6 +10,8 @@ namespace c0 {
             return TokenType::CONST;
         else if (str == "void")
             return TokenType::VOID;
+        else if (str == "int")
+            return TokenType::INT;
         else if (str == "char")
             return TokenType::CHAR;
         else if (str == "double")

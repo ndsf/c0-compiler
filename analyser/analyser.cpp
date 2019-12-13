@@ -20,6 +20,9 @@ namespace c0 {
         err = analyseFunctionDefinition();
         if (err.has_value())
             return err;
+        auto next = nextToken();
+        if (next.has_value())
+            return std::make_optional<CompilationError>(_current_pos, ErrorCode::ErrSurplusTokenAfterFunctionDefinition);
         return {};
     }
 
@@ -75,8 +78,13 @@ namespace c0 {
             }
             // ';'
             next = nextToken();
-            if (!next.has_value() || next.value().GetType() != TokenType::SEMICOLON)
-                return std::make_optional<CompilationError>(_current_pos, ErrorCode::ErrNoSemicolon);
+            if (!next.has_value() || next.value().GetType() != TokenType::SEMICOLON) {
+                unreadToken();
+                unreadToken();
+                //unreadToken();
+                break;
+                // return std::make_optional<CompilationError>(_current_pos, ErrorCode::ErrNoSemicolon);
+            }
         }
         return {};
     }
