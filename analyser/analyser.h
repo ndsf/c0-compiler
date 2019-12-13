@@ -48,6 +48,7 @@ namespace c0 {
         std::optional<CompilationError> analyseCastExpression();
         std::optional<CompilationError> analyseUnaryExpression();
         std::optional<CompilationError> analysePrimaryExpression();
+		std::optional<CompilationError> analyseFunctionCall();
 		// <主过程>
 		// std::optional<CompilationError> analyseMain();
 		// <常量声明>
