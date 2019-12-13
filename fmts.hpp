@@ -137,15 +137,6 @@ namespace fmt {
         auto format(const c0::TokenType &p, FormatContext &ctx) {
             std::string name;
             switch (p) {
-                case c0::BEGIN:
-                    name = "Begin";
-                    break;
-                case c0::END:
-                    name = "End";
-                    break;
-                case c0::VAR:
-                    name = "Var";
-                    break; // TODO remove when finished
                 case c0::NULL_TOKEN:
                     name = "NullToken";
                     break;
@@ -175,9 +166,6 @@ namespace fmt {
                     break;
                 case c0::WHILE:
                     name = "While";
-                    break;
-                case c0::MAIN:
-                    name = "Main";
                     break;
                 case c0::RETURN:
                     name = "Return";
@@ -252,7 +240,7 @@ namespace fmt {
                     name = "Semicolon";
                     break;
                 case c0::ASSIGNMENT_OPERATOR:
-                    name = "Assign";
+                    name = "AssignmentOperator";
                     break;
                 case c0::STRUCT:
                     name = "Struct";
@@ -278,7 +266,7 @@ namespace fmt {
                 case c0::CONTINUE:
                     name = "Continue";
                     break;
-                case c0::HEX_INTEGER:
+                case c0::HEXADECIMAL_LITERAL:
                     name = "HexadecimalDigit";
                     break;
                 default:

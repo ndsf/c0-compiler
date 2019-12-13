@@ -9,9 +9,6 @@
 
 namespace c0 {
     enum TokenType {
-        BEGIN,
-        END,
-        VAR, // TODO remove when finished
         NULL_TOKEN,
         IDENTIFIER,
         CONST,
@@ -22,7 +19,6 @@ namespace c0 {
         IF,
         ELSE,
         WHILE,
-        MAIN,
         RETURN,
         PRINT,
         SCAN,
@@ -31,7 +27,7 @@ namespace c0 {
         MULTIPLICATION_SIGN,
         DIVISION_SIGN,
         DECIMAL_LITERAL,
-        HEX_INTEGER,
+        HEXADECIMAL_LITERAL,
         FLOATING_LITERAL,
         GREATER_SIGN,
         GREATER_OR_EQUAL_SIGN,

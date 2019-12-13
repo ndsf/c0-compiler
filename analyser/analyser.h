@@ -44,6 +44,10 @@ namespace c0 {
 		std::optional<CompilationError> analyseJumpStatement();
 		std::optional<CompilationError> analysePrintStatement();
 		std::optional<CompilationError> analyseScanStatement();
+        std::optional<CompilationError> analyseMultiplicativeExpression();
+        std::optional<CompilationError> analyseCastExpression();
+        std::optional<CompilationError> analyseUnaryExpression();
+        std::optional<CompilationError> analysePrimaryExpression();
 		// <主过程>
 		// std::optional<CompilationError> analyseMain();
 		// <常量声明>
