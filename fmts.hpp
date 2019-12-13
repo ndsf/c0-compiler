@@ -96,6 +96,9 @@ namespace fmt {
                 case c0::ErrIncompleteConditionStatement:
                     name = "The condition statement is incomplete.";
                     break;
+                case c0::ErrNoMain:
+                    name = "Main function is not defined.";
+                    break;
             }
             return format_to(ctx.out(), name);
         }

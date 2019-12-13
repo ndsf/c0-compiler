@@ -96,6 +96,7 @@ namespace c0 {
         <identifier> '(' [<expression-list>] ')'
                                              <expression-list> ::=
         <expression>{','<expression>}*/
+        auto isMainDefined = false;
         while (true) {
             auto next = nextToken(); // <type-specifier>
             if (!next.has_value() ||
@@ -111,7 +112,7 @@ namespace c0 {
             if (!next.has_value() || next.value().GetType() != TokenType::IDENTIFIER)
                 return std::make_optional<CompilationError>(_current_pos, ErrorCode::ErrNeedIdentifier);
 
-            // TODO check function
+            isMainDefined = next.value().GetValueString() == "main";
 
             //<parameter-clause> ::=
             //    '(' [<parameter-declaration-list>] ')'
@@ -166,6 +167,8 @@ namespace c0 {
             if (err.has_value())
                 return err;
         }
+        if (!isMainDefined)
+            return std::make_optional<CompilationError>(_current_pos, ErrorCode::ErrNoMain);
         return {};
     }
 
