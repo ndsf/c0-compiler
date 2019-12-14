@@ -35,7 +35,7 @@ namespace c0 {
 		// <程序>
 		std::optional<CompilationError> analyseProgram();
 		std::optional<CompilationError> analyseFunctionDefinition();
-		std::optional<CompilationError> analyseCompoundStatment();
+		std::optional<CompilationError> analyseCompoundStatement();
 		std::optional<CompilationError> analyseStatement();
         std::optional<CompilationError> analyseCondition();
 		std::optional<CompilationError> analyseConditionStatement();

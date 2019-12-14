@@ -214,13 +214,13 @@ namespace c0 {
         if (!next.has_value() || next.value().GetType() != TokenType::RIGHT_BRACKET)
             return std::make_optional<CompilationError>(_current_pos, ErrorCode::ErrNoBracket);
 
-        auto err = analyseCompoundStatment();
+        auto err = analyseCompoundStatement();
         if (err.has_value())
             return err;
         return {};
     }
 
-    std::optional<CompilationError> Analyser::analyseCompoundStatment() {
+    std::optional<CompilationError> Analyser::analyseCompoundStatement() {
         //<compound-statement> ::=
         //    '{' {<variable-declaration>} <statement-seq> '}'
 
@@ -310,7 +310,8 @@ namespace c0 {
                 next = nextToken(); // {
                 if (!next.has_value() || next.value().GetType() != TokenType::LEFT_BRACE)
                     return std::make_optional<CompilationError>(_current_pos, ErrorCode::ErrNoBrace);
-                err = analyseCompoundStatment();
+                // err = analyseCompoundStatement();
+                err = analyseStatementSequence();
                 if (err.has_value())
                     return err;
                 next = nextToken(); // }
@@ -686,6 +687,7 @@ namespace c0 {
 
         next = nextToken(); // )
         if (!next.has_value() || next.value().GetType() != TokenType::RIGHT_BRACKET) {
+            unreadToken();
             // <printable-list>  ::=
             //     <printable> {',' <printable>}
             // <printable> ::=
@@ -699,6 +701,7 @@ namespace c0 {
                     return std::make_optional<CompilationError>(_current_pos, ErrorCode::ErrInvalidStatement);
                 if (next.value().GetType() == TokenType::STRING_LITERAL) {
                     // do something
+                    next = nextToken();
                 } else { // must be expression
                     auto err = analyseExpression();
                     if (err.has_value())
@@ -923,8 +926,8 @@ namespace c0 {
         auto str = next.value().GetValueString();
 //        if (isDeclared(next.value().GetValueString()))
 //            return std::make_optional<CompilationError>(_current_pos, ErrorCode::ErrDuplicateDeclaration);
-        if (!isDeclared(str))
-            return std::make_optional<CompilationError>(_current_pos, ErrorCode::ErrNotDeclared);
+        //if (!isDeclared(str))
+        //    return std::make_optional<CompilationError>(_current_pos, ErrorCode::ErrNotDeclared);
         if (isConstant(str))
             return std::make_optional<CompilationError>(_current_pos, ErrorCode::ErrAssignToConstant);
         if (isUninitializedVariable(str)) {
