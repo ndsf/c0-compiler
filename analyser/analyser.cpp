@@ -14,6 +14,28 @@ namespace c0 {
     std::optional<CompilationError> Analyser::analyseProgram() {
         //<C0-program> ::=
         //    {<variable-declaration>}{<function-definition>}
+        //<variable-declaration> ::=
+        //    [<const-qualifier>]<type-specifier><init-declarator-list>';'
+        //<init-declarator-list> ::=
+        //    <init-declarator>{','<init-declarator>}
+        //<init-declarator> ::=
+        //    <identifier>[<initializer>]
+        //<initializer> ::=
+        //    '='<expression>
+        //<function-definition> ::=
+        //<type-specifier><identifier><parameter-clause><compound-statement>
+        //
+        //<parameter-clause> ::=
+        //         '(' [<parameter-declaration-list>] ')'
+        //                                            <parameter-declaration-list> ::=
+        //<parameter-declaration>{','<parameter-declaration>}
+        // <parameter-declaration> ::=
+        //[<const-qualifier>]<type-specifier><identifier>
+        //
+        //                    <function-call> ::=
+        //<identifier> '(' [<expression-list>] ')'
+        //                                     <expression-list> ::=
+        //<expression>{','<expression>}
         auto err = analyseVariableDeclaration();
         if (err.has_value())
             return err;
@@ -90,20 +112,20 @@ namespace c0 {
     }
 
     std::optional<CompilationError> Analyser::analyseFunctionDefinition() {
-        /*<function-definition> ::=
-        <type-specifier><identifier><parameter-clause><compound-statement>
-
-         <parameter-clause> ::=
-                 '(' [<parameter-declaration-list>] ')'
-                                                    <parameter-declaration-list> ::=
-        <parameter-declaration>{','<parameter-declaration>}
-         <parameter-declaration> ::=
-        [<const-qualifier>]<type-specifier><identifier>
-
-                            <function-call> ::=
-        <identifier> '(' [<expression-list>] ')'
-                                             <expression-list> ::=
-        <expression>{','<expression>}*/
+        //<function-definition> ::=
+        //<type-specifier><identifier><parameter-clause><compound-statement>
+        //
+        //<parameter-clause> ::=
+        //         '(' [<parameter-declaration-list>] ')'
+        //                                            <parameter-declaration-list> ::=
+        //<parameter-declaration>{','<parameter-declaration>}
+        // <parameter-declaration> ::=
+        //[<const-qualifier>]<type-specifier><identifier>
+        //
+        //                    <function-call> ::=
+        //<identifier> '(' [<expression-list>] ')'
+        //                                     <expression-list> ::=
+        //<expression>{','<expression>}
         auto isMainDefined = false;
         while (true) {
             auto next = nextToken(); // <type-specifier>
@@ -565,26 +587,6 @@ namespace c0 {
                                 return err;
                         } else if (next.value().GetType() ==
                                    TokenType::LEFT_BRACKET) { // <function-call> ::= <identifier> '(' [<expression-list>] ')'
-//                            next = nextToken();
-//                            if (!next.has_value())
-//                                return std::make_optional<CompilationError>(_current_pos, ErrorCode::ErrNoBracket);
-//                            else if (next.value().GetType() == TokenType::RIGHT_BRACKET)
-//                                break;
-//                            else {
-//                                while (true) {
-//                                    auto err = analyseExpression();
-//                                    if (err.has_value())
-//                                        return err;
-//                                    next = nextToken();
-//                                    if (!next.has_value() || next.value().GetType() != TokenType::COMMA) {
-//                                        unreadToken();
-//                                        break;
-//                                    }
-//                                }
-//                                next = nextToken(); // )
-//                                if (!next.has_value() || next.value().GetType() != TokenType::RIGHT_BRACKET)
-//                                    return std::make_optional<CompilationError>(_current_pos, ErrorCode::ErrNoBracket);
-//                            }
                             unreadToken();
                             unreadToken();
                             auto err = analyseFunctionCall();
@@ -721,156 +723,6 @@ namespace c0 {
             return std::make_optional<CompilationError>(_current_pos, ErrorCode::ErrNoSemicolon);
         return {};
     }
-
-    // <主过程> ::= <常量声明><变量声明><语句序列> DEPRECATED
-    // 需要补全
-    /*std::optional<CompilationError> Analyser::analyseMain() {
-        // 完全可以参照 <程序> 编写
-
-        // <常量声明>
-        auto err = analyseConstantDeclaration();
-        if (err.has_value())
-            return err;
-
-        // <变量声明>
-        err = analyseVariableDeclaration();
-        if (err.has_value())
-            return err;
-
-        // <语句序列>
-        err = analyseStatementSequence();
-        if (err.has_value())
-            return err;
-        return {};
-    }*/
-
-    // <常量声明> ::= {<常量声明语句>}
-    // <常量声明语句> ::= 'const'<标识符>'='<常表达式>';'
-    /*std::optional<CompilationError> Analyser::analyseConstantDeclaration() {
-        // 示例函数，示例如何分析常量声明
-
-        // 常量声明语句可能有 0 或无数个
-        while (true) {
-            // 预读一个 token，不然不知道是否应该用 <常量声明> 推导
-            auto next = nextToken();
-            if (!next.has_value())
-                return {};
-            // 如果是 const 那么说明应该推导 <常量声明> 否则直接返回
-            if (next.value().GetType() != TokenType::CONST) {
-                unreadToken();
-                return {};
-            }
-
-            // <常量声明语句>
-            next = nextToken();
-            if (!next.has_value() || next.value().GetType() != TokenType::IDENTIFIER)
-                return std::make_optional<CompilationError>(_current_pos, ErrorCode::ErrNeedIdentifier);
-            if (isDeclared(next.value().GetValueString()))
-                return std::make_optional<CompilationError>(_current_pos, ErrorCode::ErrDuplicateDeclaration);
-            addConstant(next.value());
-
-            // '='
-            next = nextToken();
-            if (!next.has_value() || next.value().GetType() != TokenType::EQUAL_SIGN)
-                return std::make_optional<CompilationError>(_current_pos, ErrorCode::ErrConstantNeedValue);
-
-            // <常表达式>
-            int32_t val;
-            auto err = analyseConstantExpression(val);
-            if (err.has_value())
-                return err;
-
-            // ';'
-            next = nextToken();
-            if (!next.has_value() || next.value().GetType() != TokenType::SEMICOLON)
-                return std::make_optional<CompilationError>(_current_pos, ErrorCode::ErrNoSemicolon);
-            // 生成一次 LIT 指令加载常量
-            _instructions.emplace_back(Operation::LIT, val);
-        }
-        return {};
-    }*/
-
-    // <变量声明> ::= {<变量声明语句>}
-    // <变量声明语句> ::= 'var'<标识符>['='<表达式>]';'
-    // 需要补全
-    /*std::optional<CompilationError> Analyser::analyseVariableDeclaration() {
-        // 变量声明语句可能有一个或者多个
-        while (true) {
-            // 预读？
-            auto next = nextToken();
-            if (!next.has_value())
-                return {};
-            // 'var'
-            if (next.value().GetType() != TokenType::VAR) {
-                unreadToken();
-                return {};
-            }
-            // <标识符>
-            next = nextToken();
-            if (!next.has_value() || next.value().GetType() != TokenType::IDENTIFIER)
-                return std::make_optional<CompilationError>(_current_pos, ErrorCode::ErrNeedIdentifier);
-            //已经声明过 报错
-            if (isDeclared(next.value().GetValueString()))
-                return std::make_optional<CompilationError>(_current_pos, ErrorCode::ErrDuplicateDeclaration);
-            auto var = next.value();
-            // 变量可能没有初始化，仍然需要一次预读
-            next = nextToken();
-            if (!next.has_value())
-                return {};
-            //初值0
-            _instructions.emplace_back(Operation::LIT, 0);
-            // '='
-            if (next.value().GetType() != TokenType::EQUAL_SIGN) {
-                unreadToken();
-                addUninitializedVariable(var);
-                // return std::make_optional<CompilationError>(_current_pos, ErrorCode::ErrConstantNeedValue);
-            } else {
-                // '<表达式>'
-                auto err = analyseExpression();
-                if (err.has_value())
-                    return err;
-                addVariable(var);
-                //给变量赋值
-                int32_t index = getIndex(var.GetValueString());
-                _instructions.emplace_back(Operation::STO, index);
-            }
-            // ';'
-            next = nextToken();
-            if (!next.has_value() || next.value().GetType() != TokenType::SEMICOLON)
-                return std::make_optional<CompilationError>(_current_pos, ErrorCode::ErrNoSemicolon);
-        }
-        return {};
-    }*/
-    // <常表达式> ::= [<符号>]<无符号整数>
-    // 需要补全
-    /*std::optional<CompilationError> Analyser::analyseConstantExpression(int32_t &out) {
-        // out 是常表达式的结果
-        // 这里你要分析常表达式并且计算结果
-        // 注意以下均为常表达式
-        // +1 -1 1
-        // 同时要注意是否溢出
-
-        auto next = nextToken();
-        if (!next.has_value())
-            return std::make_optional<CompilationError>(_current_pos, ErrorCode::ErrIncompleteExpression);
-        auto prefix = "";
-        if (next.value().GetType() == TokenType::PLUS_SIGN);
-        else if (next.value().GetType() == TokenType::MINUS_SIGN)
-            prefix = "-";
-        else
-            unreadToken();
-
-        next = nextToken();
-        if (next.has_value() && next.value().GetType() == TokenType::UNSIGNED_INTEGER) {
-            try {
-                out = std::stoi(prefix + next.value().GetValueString());
-            } catch (...) {
-                return std::make_optional<CompilationError>(_current_pos, ErrorCode::ErrIntegerOverflow);
-            }
-        } else return std::make_optional<CompilationError>(_current_pos, ErrorCode::ErrIncompleteExpression);
-        return {};
-    }*/
-
 
     std::optional<CompilationError> Analyser::analyseExpression() {
         //<expression> ::=
@@ -1044,38 +896,6 @@ namespace c0 {
         }
     }
 
-    /*std::optional<CompilationError> Analyser::analyseExpressionOld() {
-        // <项>
-        auto err = analyseItem();
-        if (err.has_value())
-            return err;
-
-        // {<加法型运算符><项>}
-        while (true) {
-            // 预读
-            auto next = nextToken();
-            if (!next.has_value())
-                return {};
-            auto type = next.value().GetType();
-            if (type != TokenType::PLUS_SIGN && type != TokenType::MINUS_SIGN) {
-                unreadToken();
-                return {};
-            }
-
-            // <项>
-            err = analyseItem();
-            if (err.has_value())
-                return err;
-
-            // 根据结果生成指令
-            if (type == TokenType::PLUS_SIGN)
-                _instructions.emplace_back(Operation::ADD, 0);
-            else if (type == TokenType::MINUS_SIGN)
-                _instructions.emplace_back(Operation::SUB, 0);
-        }
-        return {};
-    }
-*/
     std::optional<CompilationError> Analyser::analyseAssignmentExpression() {
         // <assignment-expression> ::= <identifier><assignment-operator><expression>
         // 这里除了语法分析以外还要留意 标识符声明过吗？ 标识符是常量吗？ 需要生成指令吗？
@@ -1107,117 +927,6 @@ namespace c0 {
         _instructions.emplace_back(Operation::STO, getIndex(str));
         return {};
     }
-
-    // <输出语句> ::= 'print' '(' <表达式> ')' ';'
-    /*std::optional<CompilationError> Analyser::analyseOutputStatement() {
-        // 如果之前 <语句序列> 的实现正确，这里第一个 next 一定是 TokenType::PRINT
-        auto next = nextToken(); // 忽略PRINT
-
-        // '('
-        next = nextToken();
-        if (!next.has_value() || next.value().GetType() != TokenType::LEFT_BRACKET)
-            return std::make_optional<CompilationError>(_current_pos, ErrorCode::ErrInvalidPrint);
-
-        // <表达式>
-        auto err = analyseExpression();
-        if (err.has_value())
-            return err;
-
-        // ')'
-        next = nextToken();
-        if (!next.has_value() || next.value().GetType() != TokenType::RIGHT_BRACKET)
-            return std::make_optional<CompilationError>(_current_pos, ErrorCode::ErrInvalidPrint);
-
-        // ';'
-        next = nextToken();
-        if (!next.has_value() || next.value().GetType() != TokenType::SEMICOLON)
-            return std::make_optional<CompilationError>(_current_pos, ErrorCode::ErrNoSemicolon);
-
-        // 生成相应的指令 WRT
-        _instructions.emplace_back(Operation::WRT, 0);
-        return {};
-    }*/
-
-    // <项> :: = <因子>{ <乘法型运算符><因子> }
-    // 需要补全
-//    std::optional<CompilationError> Analyser::analyseItem() {
-//        // 可以参考 <表达式> 实现
-//        auto err = analyseFactor();
-//        if (err.has_value())
-//            return err;
-//        while (true) {
-//            auto next = nextToken();
-//            if (!next.has_value())
-//                return {};
-//            auto type = next.value().GetType();
-//            if (type != TokenType::MULTIPLICATION_SIGN && type != TokenType::DIVISION_SIGN) {
-//                unreadToken();
-//                return {};
-//            }
-//            err = analyseFactor();
-//            if (err.has_value())
-//                return err;
-//
-//            // 根据结果生成指令
-//            if (type == TokenType::MULTIPLICATION_SIGN)
-//                _instructions.emplace_back(Operation::MUL, 0);
-//            else if (type == TokenType::DIVISION_SIGN)
-//                _instructions.emplace_back(Operation::DIV, 0);
-//        }
-//        return {};
-//    }
-
-    // <因子> ::= [<符号>]( <标识符> | <无符号整数> | '('<表达式>')' )
-    // 需要补全
-//    std::optional<CompilationError> Analyser::analyseFactor() {
-//        // [<符号>]
-//        auto next = nextToken();
-//        auto prefix = 1;
-//        if (!next.has_value())
-//            return std::make_optional<CompilationError>(_current_pos, ErrorCode::ErrIncompleteExpression);
-//        if (next.value().GetType() == TokenType::PLUS_SIGN)
-//            prefix = 1;
-//        else if (next.value().GetType() == TokenType::MINUS_SIGN) {
-//            prefix = -1;
-//            _instructions.emplace_back(Operation::LIT, 0);
-//        } else
-//            unreadToken();
-//
-//        // 预读
-//        next = nextToken();
-//        if (!next.has_value())
-//            return std::make_optional<CompilationError>(_current_pos, ErrorCode::ErrIncompleteExpression);
-//        switch (next.value().GetType()) {
-//            // 这里和 <语句序列> 类似，需要根据预读结果调用不同的子程序
-//            // 但是要注意 default 返回的是一个编译错误
-//            case TokenType::IDENTIFIER: {
-//                if (!isDeclared(next.value().GetValueString()))
-//                    return std::make_optional<CompilationError>(_current_pos, ErrorCode::ErrNotDeclared);
-//                if (isUninitializedVariable(next.value().GetValueString()))
-//                    return std::make_optional<CompilationError>(_current_pos, ErrorCode::ErrNotInitialized);
-//                _instructions.emplace_back(Operation::LOD, getIndex(next.value().GetValueString()));
-//                break;
-//            }
-//            case TokenType::DECIMAL_LITERAL: {
-//                _instructions.emplace_back(Operation::LIT, std::stoi(next.value().GetValueString()));
-//                break;
-//            }
-//            case TokenType::LEFT_BRACKET: {
-//                auto err = analyseExpression();
-//                if (err.has_value())
-//                    return err;
-//                next = nextToken();
-//                if (!next.has_value() || next.value().GetType() != TokenType::RIGHT_BRACKET)
-//                    return std::make_optional<CompilationError>(_current_pos, ErrorCode::ErrIncompleteExpression);
-//                break;
-//            }
-//            default:
-//                return std::make_optional<CompilationError>(_current_pos, ErrorCode::ErrIncompleteExpression);
-//        }
-//        if (prefix == -1)
-//            _instructions.emplace_back(Operation::SUB, 0);
-//        return {};
-//    }
 
     std::optional<Token> Analyser::nextToken() {
         if (_offset == _tokens.size())
