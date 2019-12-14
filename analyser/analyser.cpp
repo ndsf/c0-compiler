@@ -15,58 +15,163 @@ namespace c0 {
         //<C0-program> ::=
         //    {<variable-declaration>}{<function-definition>}
         //<variable-declaration> ::=
-        //    [<const-qualifier>]<type-specifier><init-declarator-list>';'
-        //<init-declarator-list> ::=
-        //    <init-declarator>{','<init-declarator>}
-        //<init-declarator> ::=
-        //    <identifier>[<initializer>]
-        //<initializer> ::=
-        //    '='<expression>
+        //    [<const-qualifier>]<type-specifier><identifier>['='<expression>]{',' ... }';'
         //<function-definition> ::=
-        //<type-specifier><identifier><parameter-clause><compound-statement>
-        //
-        //<parameter-clause> ::=
-        //         '(' [<parameter-declaration-list>] ')'
-        //                                            <parameter-declaration-list> ::=
-        //<parameter-declaration>{','<parameter-declaration>}
-        // <parameter-declaration> ::=
-        //[<const-qualifier>]<type-specifier><identifier>
-        //
-        //                    <function-call> ::=
-        //<identifier> '(' [<expression-list>] ')'
-        //                                     <expression-list> ::=
-        //<expression>{','<expression>}
-        auto err = analyseVariableDeclaration();
-        if (err.has_value())
-            return err;
-        err = analyseFunctionDefinition();
-        if (err.has_value())
-            return err;
+        //    <type-specifier><identifier>'(' [[<const-qualifier>]<type-specifier><identifier>{',' ... }] ')'<compound-statement>
+        while (true) {
+            auto finish = false;
+            auto next = nextToken();
+            if (!next.has_value())
+                break;
+            if (next.value().GetType() == TokenType::CONST) {
+                unreadToken();
+                auto err = analyseVariableDeclaration();
+                if (err.has_value())
+                    return err;
+            } else if (next.value().GetType() == TokenType::VOID || next.value().GetType() == TokenType::INT ||
+                       next.value().GetType() == TokenType::CHAR || next.value().GetType() == TokenType::DOUBLE) {
+                next = nextToken(); // identifier
+                if (!next.has_value() || next.value().GetType() != TokenType::IDENTIFIER)
+                    return std::make_optional<CompilationError>(_current_pos, ErrorCode::ErrNeedIdentifier);
+                next = nextToken(); // (, =, ',', ;
+                unreadToken();
+                if (!next.has_value())
+                    return std::make_optional<CompilationError>(_current_pos, ErrorCode::ErrNoSemicolon);
+                switch (next.value().GetType()) {
+                    case TokenType::LEFT_BRACKET:
+                        unreadToken(); // identifier
+                        unreadToken(); // type specifier
+                        finish = true;
+                        break;
+                    case TokenType::ASSIGNMENT_OPERATOR:
+                    case TokenType::COMMA:
+                    case TokenType::SEMICOLON: {
+                        unreadToken(); // identifier
+                        unreadToken(); // type specifier
+                        auto err = analyseVariableDeclaration();
+                        if (err.has_value())
+                            return err;
+                        break;
+                    }
+                    default:
+                        return std::make_optional<CompilationError>(_current_pos, ErrorCode::ErrNoSemicolon);
+                }
+            } else {
+                unreadToken();
+                break;
+            }// return std::make_optional<CompilationError>(_current_pos, ErrorCode::ErrNoTypeSpecifier);
+            if (finish)
+                break;
+        }
+        while (true) {
+            auto next = nextToken();
+            unreadToken();
+            if (next.value().GetType() == TokenType::VOID || next.value().GetType() == TokenType::INT ||
+                next.value().GetType() == TokenType::CHAR || next.value().GetType() == TokenType::DOUBLE) {
+                auto err = analyseFunctionDefinition();
+                if (err.has_value())
+                    return err;
+            } else break;
+            // return std::make_optional<CompilationError>(_current_pos, ErrorCode::ErrNoTypeSpecifier);
+        }
         auto next = nextToken();
         if (next.has_value())
-            return std::make_optional<CompilationError>(_current_pos, ErrorCode::ErrSurplusTokenAfterFunctionDefinition);
+            return std::make_optional<CompilationError>(_current_pos,
+                                                        ErrorCode::ErrSurplusTokenAfterFunctionDefinition);
         return {};
     }
 
     std::optional<CompilationError> Analyser::analyseVariableDeclaration() {
         //<variable-declaration> ::=
-        //    [<const-qualifier>]<type-specifier><init-declarator-list>';'
-        //<init-declarator-list> ::=
-        //    <init-declarator>{','<init-declarator>}
-        //<init-declarator> ::=
-        //    <identifier>[<initializer>]
-        //<initializer> ::=
-        //    '='<expression>
+        //    [<const-qualifier>]<type-specifier><identifier>['='<expression>]{',' ... }';'
+        auto isConst = false;
+        auto next = nextToken();
+        if (!next.has_value() || // type-specifier
+            (next.value().GetType() != TokenType::CONST && next.value().GetType() != TokenType::VOID &&
+             next.value().GetType() != TokenType::INT &&
+             next.value().GetType() != TokenType::CHAR && next.value().GetType() != TokenType::DOUBLE))
+            return std::make_optional<CompilationError>(_current_pos, ErrorCode::ErrNoTypeSpecifier);
 
-        while (true) {
+        if (next.value().GetType() == TokenType::CONST) { // optional <const-qualifier>
+            isConst = true;
+            next = nextToken();
+            if (!next.has_value() || // <type-specifier> after const is not checked
+                (next.value().GetType() != TokenType::VOID && next.value().GetType() != TokenType::INT &&
+                 next.value().GetType() != TokenType::CHAR && next.value().GetType() != TokenType::DOUBLE))
+                return std::make_optional<CompilationError>(_current_pos, ErrorCode::ErrNoTypeSpecifier);
+        }
+
+        while (true) { // <init-declarator-list>
+            next = nextToken(); // at least one <init-declarator>, <init-declarator> ::= <identifier>[<initializer>]
+            if (!next.has_value() || next.value().GetType() != TokenType::IDENTIFIER)
+                return std::make_optional<CompilationError>(_current_pos, ErrorCode::ErrNeedIdentifier);
+            // TODO check the identifier
+
+            // optional <initializer>, <initializer> ::= '='<expression>
+            next = nextToken();
+            if (next.has_value() && next.value().GetType() == TokenType::ASSIGNMENT_OPERATOR) {
+                auto err = analyseExpression();
+                if (err.has_value())
+                    return err;
+                // TODO declare an initialized variable
+            } else unreadToken();
+
+            if (!next.has_value() || next.value().GetType() != TokenType::COMMA) {
+                unreadToken();
+                break;
+            }
+        }
+        // ';'
+        next = nextToken();
+        if (!next.has_value() || next.value().GetType() != TokenType::SEMICOLON)
+            return std::make_optional<CompilationError>(_current_pos, ErrorCode::ErrNoSemicolon);
+        return {};
+    }
+
+    std::optional<CompilationError> Analyser::analyseFunctionDefinition() {
+        //<function-definition> ::=
+        //<type-specifier><identifier>'(' [[<const-qualifier>]<type-specifier><identifier>{',' ... }] ')'<compound-statement>
+        //<function-call> ::=
+        //<identifier> '(' [<expression-list>] ')'
+        //                                     <expression-list> ::=
+        //<expression>{','<expression>}
+        auto isMainDefined = false;
+
+        auto next = nextToken(); // <type-specifier>
+        if (!next.has_value() ||
+            (next.value().GetType() != TokenType::VOID && next.value().GetType() != TokenType::INT &&
+             next.value().GetType() != TokenType::CHAR && next.value().GetType() != TokenType::DOUBLE))
+            return std::make_optional<CompilationError>(_current_pos, ErrorCode::ErrNoTypeSpecifier);
+
+        // auto type = next.value().GetType();
+
+        next = nextToken(); // <identifier>
+        if (!next.has_value() || next.value().GetType() != TokenType::IDENTIFIER)
+            return std::make_optional<CompilationError>(_current_pos, ErrorCode::ErrNeedIdentifier);
+
+        isMainDefined = next.value().GetValueString() == "main";
+
+        //<parameter-clause> ::=
+        //    '(' [<parameter-declaration-list>] ')'
+        //<parameter-declaration-list> ::=
+        //    <parameter-declaration>{','<parameter-declaration>}
+        //<parameter-declaration> ::=
+        //    [<const-qualifier>]<type-specifier><identifier>
+
+        next = nextToken(); // (
+        if (!next.has_value() || next.value().GetType() != TokenType::LEFT_BRACKET)
+            return std::make_optional<CompilationError>(_current_pos, ErrorCode::ErrNoBracket);
+
+        while (true) { // [[<const-qualifier>]<type-specifier><identifier>{','[<const-qualifier>]<type-specifier><identifier>}]
             auto isConst = false;
-            auto next = nextToken();
-            if (!next.has_value() || // type-specifier
+            next = nextToken();
+            if (!next.has_value() ||
                 (next.value().GetType() != TokenType::CONST && next.value().GetType() != TokenType::VOID &&
                  next.value().GetType() != TokenType::INT &&
-                 next.value().GetType() != TokenType::CHAR && next.value().GetType() != TokenType::DOUBLE)) {
-                unreadToken();
-                break; // if there's no const or type-specifier, we suppose no variable is declared
+                 next.value().GetType() != TokenType::CHAR && next.value().GetType() !=
+                                                              TokenType::DOUBLE)) { // not legitimate start of a <parameter-declaration>
+                unreadToken(); // )
+                break;
             }
 
             if (next.value().GetType() == TokenType::CONST) { // optional <const-qualifier>
@@ -78,125 +183,27 @@ namespace c0 {
                     return std::make_optional<CompilationError>(_current_pos, ErrorCode::ErrNoTypeSpecifier);
             }
 
-            while (true) { // <init-declarator-list>
-                next = nextToken(); // at least one <init-declarator>, <init-declarator> ::= <identifier>[<initializer>]
-                if (!next.has_value() || next.value().GetType() != TokenType::IDENTIFIER)
-                    return std::make_optional<CompilationError>(_current_pos, ErrorCode::ErrNeedIdentifier);
-                // TODO check the identifier
-
-                // optional <initializer>, <initializer> ::= '='<expression>
-                next = nextToken();
-                if (next.has_value() && next.value().GetType() == TokenType::ASSIGNMENT_OPERATOR) {
-                    auto err = analyseExpression();
-                    if (err.has_value())
-                        return err;
-                    // TODO declare an initialized variable
-                } else unreadToken();
-
-                if (!next.has_value() || next.value().GetType() != TokenType::COMMA) {
-                    unreadToken();
-                    break;
-                }
-            }
-            // ';'
-            next = nextToken();
-            if (!next.has_value() || next.value().GetType() != TokenType::SEMICOLON) {
-                unreadToken();
-                unreadToken();
-                //unreadToken();
-                break;
-                // return std::make_optional<CompilationError>(_current_pos, ErrorCode::ErrNoSemicolon);
-            }
-        }
-        return {};
-    }
-
-    std::optional<CompilationError> Analyser::analyseFunctionDefinition() {
-        //<function-definition> ::=
-        //<type-specifier><identifier><parameter-clause><compound-statement>
-        //
-        //<parameter-clause> ::=
-        //         '(' [<parameter-declaration-list>] ')'
-        //                                            <parameter-declaration-list> ::=
-        //<parameter-declaration>{','<parameter-declaration>}
-        // <parameter-declaration> ::=
-        //[<const-qualifier>]<type-specifier><identifier>
-        //
-        //                    <function-call> ::=
-        //<identifier> '(' [<expression-list>] ')'
-        //                                     <expression-list> ::=
-        //<expression>{','<expression>}
-        auto isMainDefined = false;
-        while (true) {
-            auto next = nextToken(); // <type-specifier>
-            if (!next.has_value() ||
-                (next.value().GetType() != TokenType::VOID && next.value().GetType() != TokenType::INT &&
-                 next.value().GetType() != TokenType::CHAR && next.value().GetType() != TokenType::DOUBLE)) {
-                unreadToken(); // no function definition
-                break;
-            }
-
-            // auto type = next.value().GetType();
+            // now next must be a <type-specifier>
 
             next = nextToken(); // <identifier>
             if (!next.has_value() || next.value().GetType() != TokenType::IDENTIFIER)
                 return std::make_optional<CompilationError>(_current_pos, ErrorCode::ErrNeedIdentifier);
 
-            isMainDefined = next.value().GetValueString() == "main";
-
-            //<parameter-clause> ::=
-            //    '(' [<parameter-declaration-list>] ')'
-            //<parameter-declaration-list> ::=
-            //    <parameter-declaration>{','<parameter-declaration>}
-            //<parameter-declaration> ::=
-            //    [<const-qualifier>]<type-specifier><identifier>
-
-            next = nextToken(); // (
-            if (!next.has_value() || next.value().GetType() != TokenType::LEFT_BRACKET)
-                return std::make_optional<CompilationError>(_current_pos, ErrorCode::ErrNoBracket);
-
-            while (true) { // [[<const-qualifier>]<type-specifier><identifier>{','[<const-qualifier>]<type-specifier><identifier>}]
-                auto isConst = false;
-                next = nextToken();
-                if (!next.has_value() ||
-                    (next.value().GetType() != TokenType::CONST && next.value().GetType() != TokenType::VOID &&
-                     next.value().GetType() != TokenType::INT &&
-                     next.value().GetType() != TokenType::CHAR && next.value().GetType() !=
-                                                                  TokenType::DOUBLE)) { // not legitimate start of a <parameter-declaration>
-                    unreadToken(); // )
-                    break;
-                }
-
-                if (next.value().GetType() == TokenType::CONST) { // optional <const-qualifier>
-                    isConst = true;
-                    next = nextToken();
-                    if (!next.has_value() || // <type-specifier> after const is not checked
-                        (next.value().GetType() != TokenType::VOID && next.value().GetType() != TokenType::INT &&
-                         next.value().GetType() != TokenType::CHAR && next.value().GetType() != TokenType::DOUBLE))
-                        return std::make_optional<CompilationError>(_current_pos, ErrorCode::ErrNoTypeSpecifier);
-                }
-
-                // now next must be a <type-specifier>
-
-                next = nextToken(); // <identifier>
-                if (!next.has_value() || next.value().GetType() != TokenType::IDENTIFIER)
-                    return std::make_optional<CompilationError>(_current_pos, ErrorCode::ErrNeedIdentifier);
-
-                next = nextToken(); // ，
-                if (!next.has_value() || next.value().GetType() != TokenType::COMMA) {
-                    unreadToken(); // finish
-                    break;
-                }
+            next = nextToken(); // ，
+            if (!next.has_value() || next.value().GetType() != TokenType::COMMA) {
+                unreadToken(); // finish
+                break;
             }
-
-            next = nextToken(); // )
-            if (!next.has_value() || next.value().GetType() != TokenType::RIGHT_BRACKET)
-                return std::make_optional<CompilationError>(_current_pos, ErrorCode::ErrNoBracket);
-
-            auto err = analyseCompoundStatment();
-            if (err.has_value())
-                return err;
         }
+
+        next = nextToken(); // )
+        if (!next.has_value() || next.value().GetType() != TokenType::RIGHT_BRACKET)
+            return std::make_optional<CompilationError>(_current_pos, ErrorCode::ErrNoBracket);
+
+        auto err = analyseCompoundStatment();
+        if (err.has_value())
+            return err;
+
         if (!isMainDefined)
             return std::make_optional<CompilationError>(_current_pos, ErrorCode::ErrNoMain);
         return {};
@@ -246,7 +253,7 @@ namespace c0 {
                                       // <assignment-expression>';' <function-call> ::= <identifier> '(' [<expression-list>] ')'
                                       next.value().GetType() != TokenType::SEMICOLON // ';'
             ))
-                return {}; // empty
+                break;
 
             auto err = analyseStatement();
             if (err.has_value())
@@ -339,7 +346,7 @@ namespace c0 {
                 // <assignment-expression>';' <function-call> ::= <identifier> '(' [<expression-list>] ')'
                 //<assignment-expression> ::=
                 //    <identifier><assignment-operator><expression>
-                next = nextToken(); // the identifier
+                nextToken(); // the identifier
                 next = nextToken(); // = or (
                 unreadToken();
                 unreadToken();
@@ -386,7 +393,7 @@ namespace c0 {
                                   next.value().GetType() != TokenType::EQUAL_SIGN))
             unreadToken();
         else {
-            auto err = analyseExpression();
+            err = analyseExpression();
             if (err.has_value())
                 return err;
         }
@@ -739,9 +746,9 @@ namespace c0 {
                 unreadToken();
                 break;
             }
-            if (next.value().GetType() == TokenType::PLUS_SIGN);
-            else if (next.value().GetType() == TokenType::MINUS_SIGN); // do something
-            auto err = analyseMultiplicativeExpression();
+            // if (next.value().GetType() == TokenType::PLUS_SIGN);
+            // else if (next.value().GetType() == TokenType::MINUS_SIGN); // do something
+            err = analyseMultiplicativeExpression();
             if (err.has_value())
                 return err;
         }
@@ -761,8 +768,8 @@ namespace c0 {
                 unreadToken();
                 break;
             }
-            if (next.value().GetType() == TokenType::MULTIPLICATION_SIGN);
-            else if (next.value().GetType() == TokenType::DIVISION_SIGN); // do something
+            // if (next.value().GetType() == TokenType::MULTIPLICATION_SIGN);
+            // else if (next.value().GetType() == TokenType::DIVISION_SIGN); // do something
             auto err = analyseCastExpression();
             if (err.has_value())
                 return err;
