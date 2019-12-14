@@ -424,7 +424,7 @@ namespace c0 {
         if (next.value().GetType() == TokenType::IF) {
             next = nextToken(); // (
             if (!next.has_value() || next.value().GetType() != TokenType::LEFT_BRACKET)
-                return std::make_optional<CompilationError>(_current_pos, ErrorCode::ErrInvalidStatement);
+                return std::make_optional<CompilationError>(_current_pos, ErrorCode::ErrNoBracket);
 
             auto err = analyseCondition();
             if (err.has_value())
@@ -805,13 +805,16 @@ namespace c0 {
                     case TokenType::INT:
                     case TokenType::CHAR:
                     case TokenType::DOUBLE: // TODO do something here
+                        next = nextToken();
+                        if (!next.has_value() || next.value().GetType() != TokenType::RIGHT_BRACKET)
+                            return std::make_optional<CompilationError>(_current_pos, ErrorCode::ErrNoBracket);
                         break;
-                    default:
-                        return std::make_optional<CompilationError>(_current_pos, ErrorCode::ErrIncompleteExpression);
+                    default: { // may be '('<expression>')'
+                        unreadToken();
+                        unreadToken();
+                        break;
+                    }
                 }
-                next = nextToken();
-                if (!next.has_value() || next.value().GetType() != TokenType::RIGHT_BRACKET)
-                    return std::make_optional<CompilationError>(_current_pos, ErrorCode::ErrNoBracket);
             } else {
                 unreadToken();
                 break;
