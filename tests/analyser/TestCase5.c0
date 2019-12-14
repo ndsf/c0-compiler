@@ -13,7 +13,7 @@ int mod(int x,int y)
 
 void main()
 {
-  int a,b,c,temp1,temp2,result_1,result_2;
+  int a,b,c,temp1,temp2,result1,result2;
   scan(a);
   scan(b);	
   temp1=a;
@@ -28,8 +28,8 @@ void main()
      c= mod(a,b);
      print("mod(a,b)=", c);
   }
-  result_1=temp2;
-  result_2=a*b/result_1;
-  print(result_1);
-  print(result_2);
+  result1=temp2;
+  result2=a*b/result1;
+  print(result1);
+  print(result2);
 }

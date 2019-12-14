@@ -795,6 +795,7 @@ namespace c0 {
         //<cast-expression> ::=
         //    {'('<type-specifier>')'}<unary-expression>
         while (true) {
+            auto finish = false;
             auto next = nextToken();
             if (next.has_value() && next.value().GetType() == TokenType::LEFT_BRACKET) {
                 next = nextToken();
@@ -812,6 +813,7 @@ namespace c0 {
                     default: { // may be '('<expression>')'
                         unreadToken();
                         unreadToken();
+                        finish = true;
                         break;
                     }
                 }
@@ -819,6 +821,7 @@ namespace c0 {
                 unreadToken();
                 break;
             }
+            if (finish) break;
         }
         auto err = analyseUnaryExpression();
         if (err.has_value())
@@ -918,6 +921,7 @@ namespace c0 {
                 return std::make_optional<CompilationError>(_current_pos,
                                                             ErrorCode::ErrNoBracket);
         }
+        return {};
     }
 
     std::optional<CompilationError> Analyser::analyseAssignmentExpression() {
