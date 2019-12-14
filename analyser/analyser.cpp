@@ -928,8 +928,8 @@ namespace c0 {
 //            return std::make_optional<CompilationError>(_current_pos, ErrorCode::ErrDuplicateDeclaration);
         //if (!isDeclared(str))
         //    return std::make_optional<CompilationError>(_current_pos, ErrorCode::ErrNotDeclared);
-        if (isConstant(str))
-            return std::make_optional<CompilationError>(_current_pos, ErrorCode::ErrAssignToConstant);
+        //if (isConstant(str))
+        //    return std::make_optional<CompilationError>(_current_pos, ErrorCode::ErrAssignToConstant);
         if (isUninitializedVariable(str)) {
             _vars[str] = _uninitialized_vars[str];
             _uninitialized_vars.erase(str);
