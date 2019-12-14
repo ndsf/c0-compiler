@@ -3,7 +3,10 @@
 #include <climits>
 
 namespace c0 {
+    bool isMainDefined;
+
     std::pair<std::vector<Instruction>, std::optional<CompilationError>> Analyser::Analyse() {
+        isMainDefined = false;
         auto err = analyseProgram();
         if (err.has_value())
             return std::make_pair(std::vector<Instruction>(), err);
@@ -18,6 +21,33 @@ namespace c0 {
         //    [<const-qualifier>]<type-specifier><identifier>['='<expression>]{',' ... }';'
         //<function-definition> ::=
         //    <type-specifier><identifier>'(' [[<const-qualifier>]<type-specifier><identifier>{',' ... }] ')'<compound-statement>
+        auto err = analyseMultipleVariableDeclaration();
+        if (err.has_value())
+            return err;
+
+        while (true) {
+            auto next = nextToken();
+            if (!next.has_value())
+                break;
+            unreadToken();
+            if (next.value().GetType() == TokenType::VOID || next.value().GetType() == TokenType::INT ||
+                next.value().GetType() == TokenType::CHAR || next.value().GetType() == TokenType::DOUBLE) {
+                auto err = analyseFunctionDefinition();
+                if (err.has_value())
+                    return err;
+            } else break;
+            // return std::make_optional<CompilationError>(_current_pos, ErrorCode::ErrNoTypeSpecifier);
+        }
+        if (!isMainDefined)
+            return std::make_optional<CompilationError>(_current_pos, ErrorCode::ErrNoMain);
+        auto next = nextToken();
+        if (next.has_value())
+            return std::make_optional<CompilationError>(_current_pos,
+                                                        ErrorCode::ErrSurplusTokenAfterFunctionDefinition);
+        return {};
+    }
+
+    std::optional<CompilationError> Analyser::analyseMultipleVariableDeclaration() {
         while (true) {
             auto finish = false;
             auto next = nextToken();
@@ -63,21 +93,6 @@ namespace c0 {
             if (finish)
                 break;
         }
-        while (true) {
-            auto next = nextToken();
-            unreadToken();
-            if (next.value().GetType() == TokenType::VOID || next.value().GetType() == TokenType::INT ||
-                next.value().GetType() == TokenType::CHAR || next.value().GetType() == TokenType::DOUBLE) {
-                auto err = analyseFunctionDefinition();
-                if (err.has_value())
-                    return err;
-            } else break;
-            // return std::make_optional<CompilationError>(_current_pos, ErrorCode::ErrNoTypeSpecifier);
-        }
-        auto next = nextToken();
-        if (next.has_value())
-            return std::make_optional<CompilationError>(_current_pos,
-                                                        ErrorCode::ErrSurplusTokenAfterFunctionDefinition);
         return {};
     }
 
@@ -116,6 +131,7 @@ namespace c0 {
                 // TODO declare an initialized variable
             } else unreadToken();
 
+            next = nextToken();
             if (!next.has_value() || next.value().GetType() != TokenType::COMMA) {
                 unreadToken();
                 break;
@@ -135,8 +151,6 @@ namespace c0 {
         //<identifier> '(' [<expression-list>] ')'
         //                                     <expression-list> ::=
         //<expression>{','<expression>}
-        auto isMainDefined = false;
-
         auto next = nextToken(); // <type-specifier>
         if (!next.has_value() ||
             (next.value().GetType() != TokenType::VOID && next.value().GetType() != TokenType::INT &&
@@ -203,9 +217,6 @@ namespace c0 {
         auto err = analyseCompoundStatment();
         if (err.has_value())
             return err;
-
-        if (!isMainDefined)
-            return std::make_optional<CompilationError>(_current_pos, ErrorCode::ErrNoMain);
         return {};
     }
 
@@ -217,7 +228,7 @@ namespace c0 {
         if (!next.has_value() || next.value().GetType() != TokenType::LEFT_BRACE)
             return std::make_optional<CompilationError>(_current_pos, ErrorCode::ErrNoBrace);
 
-        auto err = analyseVariableDeclaration();
+        auto err = analyseMultipleVariableDeclaration();
         if (err.has_value())
             return err;
 
