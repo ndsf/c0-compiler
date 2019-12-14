@@ -1,0 +1,12 @@
+int i,result;
+void main()
+{
+	result=0;
+	i= 0;
+	while( i <10 )
+	{
+		result=result+i;
+		i= i+1;
+	}
+	print("The result is:", result);
+}

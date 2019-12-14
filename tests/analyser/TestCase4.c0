@@ -1,0 +1,16 @@
+void main()
+{
+  int a,b;
+
+  scan(a);
+  scan(b);
+  while ( b != 0 )
+  {
+    print(a+b);
+    print(a-b);
+    print(a*b);
+    print(a/b);
+    scan(a);
+    scan(b);
+  }
+}

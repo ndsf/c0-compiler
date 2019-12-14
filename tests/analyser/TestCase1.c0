@@ -1,0 +1,15 @@
+const int PI=3;
+int radius,area,perimeter;
+void main()
+{
+     scan (radius);
+     if (radius<0)
+		print("1");
+     else
+     {
+        print(radius);
+        perimeter=2*PI*radius;
+		area=PI*radius*radius;
+     }
+     print (area);
+}

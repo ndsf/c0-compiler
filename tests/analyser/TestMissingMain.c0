@@ -1,0 +1,3 @@
+int mian(){
+	print("Hello world!\n");
+}

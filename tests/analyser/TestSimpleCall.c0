@@ -1,0 +1,11 @@
+const a=1,b=2;
+int i;
+int test(){
+	return (a+b+i);
+}
+int main(){
+	i = 3;
+	i = test();
+	i = i + test();
+	print(test());
+}
