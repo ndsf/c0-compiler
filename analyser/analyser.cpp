@@ -380,6 +380,9 @@ namespace c0 {
                     default:
                         return std::make_optional<CompilationError>(_current_pos, ErrorCode::ErrInvalidStatement);
                 }
+                next = nextToken(); // ;
+                if (!next.has_value() || next.value().GetType() != TokenType::SEMICOLON)
+                    return std::make_optional<CompilationError>(_current_pos, ErrorCode::ErrNoSemicolon);
                 break;
             }
             case TokenType::SEMICOLON:
