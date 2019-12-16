@@ -7,22 +7,23 @@
 #include <any>
 #include <utility>
 #include <map>
+#include <list>
+#include <vector>
 
 namespace c0 {
     enum SymbolType {
-        INT,
-        DOUBLE,
-        CHAR,
-        VOID,
-        STRING
+        CONSTANT,
+        VARIABLE,
+        ARGUMENT,
+        CONSTANT_ARGUMENT,
+        FUNCTION
     };
 
     class SymbolEntry final {
     private:
-        using uint64_t = std::uint64_t;
         using int32_t = std::int32_t;
     public:
-        SymbolEntry(SymbolType type, std::string name, std::any value, uint64_t level, uint64_t offset) : _type(type),
+        SymbolEntry(SymbolType type, std::string name, std::any value, int32_t level, int32_t offset) : _type(type),
                                                                                                           _name(std::move(
                                                                                                                   name)),
                                                                                                           _value(std::move(
@@ -36,9 +37,9 @@ namespace c0 {
 
         std::any GetValue() const { return _value; };
 
-        uint64_t GetLevel() const { return _level; };
+        int32_t GetLevel() const { return _level; };
 
-        uint64_t GetOffset() const { return _offset; };
+        int32_t GetOffset() const { return _offset; };
 
         std::string GetValueString() const {
             try {
@@ -62,22 +63,68 @@ namespace c0 {
         SymbolType _type;
         std::string _name;
         std::any _value;
-        uint64_t _level;
-        uint64_t _offset;
+        int32_t _level;
+        int32_t _offset;
     };
 
     class SymbolTable final {
-    private:
-        using uint64_t = std::uint64_t;
     public:
-        SymbolTable(): _level(0)
+        SymbolTable() : level(0), next_offset(0), symbols({}) {}
+
+        int32_t level;
+        int32_t next_offset;
+        std::map<std::string, SymbolEntry> symbols;
+    };
+
+    class SymbolTables final {
+    private:
+        using int32_t = std::int32_t;
+    public:
+        SymbolTables() : _current_level(0), _symbol_table({new SymbolTable()}), _iterator(_symbol_table.begin()) {}
+
+        bool IsDuplicate(std::string name) {
+            auto table = _iterator->symbols;
+            auto it = table.find(name);
+            return it != table.end();
+        }
+
+        void UpdateSymbol(std::string name, std::any value, SymbolType symbolType) {
+            int32_t offset = -1;
+            if (symbolType != FUNCTION)
+                offset = _iterator->next_offset++;
+            _iterator->symbols[name] = new SymbolEntry(symbolType, name, value, _current_level, offset);
+        }
+
+        SymbolEntry FindSymbol(std::string name) {
+            auto iter = _iterator;
+            do {
+                auto table = _iterator->symbols;
+                auto it = table.find(name);
+                if (it != table.end())
+                    return *it;
+            } while (--iter != _symbol_table.begin());
+        }
+
+        std::optional<CompilationError> NextLevel() {
+            if (_iterator == _symbol_table.end() - 1)
+                _symbol_table.push_back(new SymbolTable());
+            _iterator++;
+            _current_level++;
+            return {};
+        }
+
+        std::optional<CompilationError> PreviousLevel() {
+            if (_iterator == _symbol_table.begin())
+                return std::make_optional<CompilationError>(ErrorCode::ErrNoPreviousLevel);
+            _iterator--;
+            _current_level--;
+            return {};
+        }
 
     private:
-        uint64_t _level;
-        uint64_t _next_offset;
-        std::map<std::string, SymbolEntry> _symbol_table;
-        SymbolTable *prev;
-        SymbolTable *next;
+        int32_t _current_level;
+        std::list<SymbolTable> _symbol_table;
+        std::list<SymbolTable>::iterator _iterator;
     };
 
 }

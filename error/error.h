@@ -47,7 +47,8 @@ namespace c0 {
         ErrInvalidStatement,
         ErrIncompleteConditionStatement,
         ErrNoMain,
-        ErrSurplusTokenAfterFunctionDefinition
+        ErrSurplusTokenAfterFunctionDefinition,
+        ErrNoPreviousLevel
 	};
 
 	class CompilationError final{
