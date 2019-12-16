@@ -21,7 +21,6 @@ namespace c0 {
         // 状态机的所有状态
         enum DFAState {
             INITIAL_STATE,
-            UNSIGNED_INTEGER_STATE,
             FLOAT_STATE, // 1.1
             FLOAT_WITH_EXPONENT_STATE, // 1.1e
             FLOAT_WITH_EXPONENT_AND_OPTIONAL_SIGN_STATE, // 1.1e[+/-]

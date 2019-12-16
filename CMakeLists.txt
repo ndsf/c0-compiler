@@ -22,7 +22,7 @@ set(lib_src
 set(main_src
 	main.cpp
 	fmts.hpp
-)
+        analyser/symbol_table.h)
 
 add_library(${PROJECT_LIB} ${lib_src})
 
