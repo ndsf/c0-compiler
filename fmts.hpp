@@ -102,6 +102,18 @@ namespace fmt {
                 case c0::ErrSurplusTokenAfterFunctionDefinition:
                     name = "Found surplus token after function definition.";
                     break;
+                case c0::ErrNoPreviousLevel:
+                    name = "No previous level.";
+                    break;
+                case c0::ErrNoReturnValue:
+                    name = "No return value.";
+                    break;
+                case c0::ErrParamsSizeNotIdentical:
+                    name = "Params size not identical.";
+                    break;
+                case c0::ErrWIP:
+                    name = "WIP feature.";
+                    break;
             }
             return format_to(ctx.out(), name);
         }
@@ -321,6 +333,87 @@ namespace fmt {
                 case c0::STO:
                     name = "STO";
                     break;
+                case c0::IPUSH:
+                    name = "IPUSH";
+                    break;
+                case c0::LOADA:
+                    name = "LOADA";
+                    break;
+                case c0::ILOAD:
+                    name = "ILOAD";
+                    break;
+                case c0::IMUL:
+                    name = "IMUL";
+                    break;
+                case c0::IDIV:
+                    name = "IDIV";
+                    break;
+                case c0::IADD:
+                    name = "IADD";
+                    break;
+                case c0::ISUB:
+                    name = "ISUB";
+                    break;
+                case c0::RET:
+                    name = "RET";
+                    break;
+                case c0::IRET:
+                    name = "IRET";
+                    break;
+                case c0::JE:
+                    name = "JE";
+                    break;
+                case c0::JNE:
+                    name = "JNE";
+                    break;
+                case c0::JL:
+                    name = "JL";
+                    break;
+                case c0::JGE:
+                    name = "JGE";
+                    break;
+                case c0::JG:
+                    name = "JG";
+                    break;
+                case c0::JLE:
+                    name = "JLE";
+                    break;
+                case c0::ICMP:
+                    name = "ICMP";
+                    break;
+                case c0::JMP:
+                    name = "JMP";
+                    break;
+                case c0::CALL:
+                    name = "CALL";
+                    break;
+                case c0::ISTORE:
+                    name = "ISTORE";
+                    break;
+                case c0::SPRINT:
+                    name = "SPRINT";
+                    break;
+                case c0::IPRINT:
+                    name = "IPRINT";
+                    break;
+                case c0::CPRINT:
+                    name = "CPRINT";
+                    break;
+                case c0::LOADC:
+                    name = "LOADC";
+                    break;
+                case c0::ISCAN:
+                    name = "ISCAN";
+                    break;
+                case c0::CSCAN:
+                    name = "CSCAN";
+                    break;
+                case c0::NOP:
+                    name = "NOP";
+                    break;
+                case c0::POP:
+                    name = "POP";
+                    break;
             }
             return format_to(ctx.out(), name);
         }
@@ -335,17 +428,19 @@ namespace fmt {
         auto format(const c0::Instruction &p, FormatContext &ctx) {
             std::string name;
             switch (p.GetOperation()) {
-                case c0::ILL:
-                case c0::ADD:
-                case c0::SUB:
-                case c0::MUL:
-                case c0::DIV:
-                case c0::WRT:
-                    return format_to(ctx.out(), "{}", p.GetOperation());
-                case c0::LIT:
-                case c0::LOD:
-                case c0::STO:
-                    return format_to(ctx.out(), "{} {}", p.GetOperation(), p.GetX());
+//                case c0::ILL:
+//                case c0::ADD:
+//                case c0::SUB:
+//                case c0::MUL:
+//                case c0::DIV:
+//                case c0::WRT:
+//                    return format_to(ctx.out(), "{}", p.GetOperation());
+//                case c0::LIT:
+//                case c0::LOD:
+//                case c0::STO:
+//                    return format_to(ctx.out(), "{} {}", p.GetOperation(), p.GetX());
+                default:
+                    return format_to(ctx.out(), "{} {} {}", p.GetOperation(), p.GetX(), p.GetY());
             }
             return format_to(ctx.out(), "ILL");
         }

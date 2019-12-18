@@ -5,13 +5,15 @@
 namespace c0 {
     bool isMainDefined;
 
-    std::pair<std::vector<Instruction>, std::optional<CompilationError>> Analyser::Analyse() {
+    std::tuple<std::vector<Instruction>, std::vector<GlobalConstant>, std::vector<GlobalFunction>, std::optional<CompilationError>> Analyser::Analyse() {
         isMainDefined = false;
         auto err = analyseProgram();
         if (err.has_value())
-            return std::make_pair(std::vector<Instruction>(), err);
+            // return std::make_pair(std::vector<Instruction>(), err);
+            return {std::vector<Instruction>(), std::vector<GlobalConstant>(), std::vector<GlobalFunction>(), err};
         else
-            return std::make_pair(_instructions, std::optional<CompilationError>());
+            return {_instructions, table._global_constants, table._global_functions, std::optional<CompilationError>()};
+            // return std::make_pair(_instructions, std::optional<CompilationError>());
     }
 
     std::optional<CompilationError> Analyser::analyseProgram() {
@@ -32,7 +34,7 @@ namespace c0 {
             unreadToken();
             if (next.value().GetType() == TokenType::VOID || next.value().GetType() == TokenType::INT ||
                 next.value().GetType() == TokenType::CHAR || next.value().GetType() == TokenType::DOUBLE) {
-                auto err = analyseFunctionDefinition();
+                err = analyseFunctionDefinition();
                 if (err.has_value())
                     return err;
             } else break;
@@ -100,6 +102,9 @@ namespace c0 {
         //<variable-declaration> ::=
         //    [<const-qualifier>]<type-specifier><identifier>['='<expression>]{',' ... }';'
         auto isConst = false;
+        // TokenType type;
+        ValueType type;
+
         auto next = nextToken();
         if (!next.has_value() || // type-specifier
             (next.value().GetType() != TokenType::CONST && next.value().GetType() != TokenType::VOID &&
@@ -116,20 +121,35 @@ namespace c0 {
                 return std::make_optional<CompilationError>(_current_pos, ErrorCode::ErrNoTypeSpecifier);
         }
 
+        type = tokenTypeToValueType(next.value().GetType());
+
         while (true) { // <init-declarator-list>
             next = nextToken(); // at least one <init-declarator>, <init-declarator> ::= <identifier>[<initializer>]
             if (!next.has_value() || next.value().GetType() != TokenType::IDENTIFIER)
                 return std::make_optional<CompilationError>(_current_pos, ErrorCode::ErrNeedIdentifier);
-            // TODO check the identifier
 
+            auto name = next.value().GetValueString();
+            if (table.IsDuplicate(name))
+                return std::make_optional<CompilationError>(_current_pos, ErrorCode::ErrDuplicateDeclaration);
             // optional <initializer>, <initializer> ::= '='<expression>
             next = nextToken();
             if (next.has_value() && next.value().GetType() == TokenType::ASSIGNMENT_OPERATOR) {
+                // transInsert(name, type, isConst)
+                table.UpdateSymbol(name, 0, isConst ? CONSTANT : VARIABLE, type);
+                auto entry = table.FindSymbol(name);
+                // auto level = entry.value().GetLevel();
+                // auto offset = getOffset(entry.value());
+
                 auto err = analyseExpression();
                 if (err.has_value())
                     return err;
-                // TODO declare an initialized variable
-            } else unreadToken();
+            } else { // not initialized
+                unreadToken();
+                if (isConst)
+                    return std::make_optional<CompilationError>(_current_pos, ErrorCode::ErrConstantNeedValue);
+                addInstruction(IPUSH, 0, 0);
+                table.UpdateSymbol(name, 0, VARIABLE, type);
+            }
 
             next = nextToken();
             if (!next.has_value() || next.value().GetType() != TokenType::COMMA) {
@@ -151,6 +171,7 @@ namespace c0 {
         //<identifier> '(' [<expression-list>] ')'
         //                                     <expression-list> ::=
         //<expression>{','<expression>}
+        _code_offset = 0;
         auto next = nextToken(); // <type-specifier>
         if (!next.has_value() ||
             (next.value().GetType() != TokenType::VOID && next.value().GetType() != TokenType::INT &&
@@ -158,12 +179,18 @@ namespace c0 {
             return std::make_optional<CompilationError>(_current_pos, ErrorCode::ErrNoTypeSpecifier);
 
         // auto type = next.value().GetType();
+        ValueType type = tokenTypeToValueType(next.value().GetType());
 
         next = nextToken(); // <identifier>
         if (!next.has_value() || next.value().GetType() != TokenType::IDENTIFIER)
             return std::make_optional<CompilationError>(_current_pos, ErrorCode::ErrNeedIdentifier);
 
-        isMainDefined = next.value().GetValueString() == "main";
+        auto name = next.value().GetValueString();
+        isMainDefined = name == "main";
+        table.AddGlobalConstant(name, name, STRING_TYPE);
+        if (table.IsDuplicate(name))
+            return std::make_optional<CompilationError>(_current_pos, ErrorCode::ErrDuplicateDeclaration);
+        table.NextLevel();
 
         //<parameter-clause> ::=
         //    '(' [<parameter-declaration-list>] ')'
@@ -176,6 +203,7 @@ namespace c0 {
         if (!next.has_value() || next.value().GetType() != TokenType::LEFT_BRACKET)
             return std::make_optional<CompilationError>(_current_pos, ErrorCode::ErrNoBracket);
 
+        std::vector<Arg> args;
         while (true) { // [[<const-qualifier>]<type-specifier><identifier>{','[<const-qualifier>]<type-specifier><identifier>}]
             auto isConst = false;
             next = nextToken();
@@ -198,10 +226,17 @@ namespace c0 {
             }
 
             // now next must be a <type-specifier>
+            type = tokenTypeToValueType(next.value().GetType());
 
             next = nextToken(); // <identifier>
             if (!next.has_value() || next.value().GetType() != TokenType::IDENTIFIER)
                 return std::make_optional<CompilationError>(_current_pos, ErrorCode::ErrNeedIdentifier);
+
+            auto val = next.value().GetValueString();
+            if (table.IsDuplicate(val))
+                return std::make_optional<CompilationError>(_current_pos, ErrorCode::ErrDuplicateDeclaration);
+            args.emplace_back(isConst, val, type);
+            table.UpdateSymbol(val, 0, isConst ? CONSTANT_ARGUMENT : ARGUMENT, type);
 
             next = nextToken(); // ，
             if (!next.has_value() || next.value().GetType() != TokenType::COMMA) {
@@ -214,7 +249,29 @@ namespace c0 {
         if (!next.has_value() || next.value().GetType() != TokenType::RIGHT_BRACKET)
             return std::make_optional<CompilationError>(_current_pos, ErrorCode::ErrNoBracket);
 
-        auto err = analyseCompoundStatement();
+//        auto err = analyseCompoundStatement(); maybe need this
+//        if (err.has_value())
+//            return err;
+        next = nextToken(); // {
+        if (!next.has_value() || next.value().GetType() != TokenType::LEFT_BRACE)
+            return std::make_optional<CompilationError>(_current_pos, ErrorCode::ErrNoBrace);
+
+        auto err = analyseMultipleVariableDeclaration();
+        if (err.has_value())
+            return err;
+
+        table.AddGlobalFunction(name, args.size(), table.GetCurrentLevel(), args, 0, type);
+        _context = table.GetGlobalFunction(name).value();
+
+        err = analyseStatementSequence();
+        if (err.has_value())
+            return err;
+
+        next = nextToken(); // }
+        if (!next.has_value() || next.value().GetType() != TokenType::RIGHT_BRACE)
+            return std::make_optional<CompilationError>(_current_pos, ErrorCode::ErrNoBrace);
+
+        err = table.PreviousLevel();
         if (err.has_value())
             return err;
         return {};
@@ -306,17 +363,27 @@ namespace c0 {
 
         std::optional<CompilationError> err;
         switch (next.value().GetType()) {
-            case TokenType::LEFT_BRACE: { // '{' <statement-seq> '}'
+            case TokenType::LEFT_BRACE: { // <compound-statement>
+                table.NextLevel();
+
                 next = nextToken(); // {
                 if (!next.has_value() || next.value().GetType() != TokenType::LEFT_BRACE)
                     return std::make_optional<CompilationError>(_current_pos, ErrorCode::ErrNoBrace);
-                // err = analyseCompoundStatement();
-                err = analyseStatementSequence();
+
+                err = analyseCompoundStatement();
                 if (err.has_value())
                     return err;
+
                 next = nextToken(); // }
                 if (!next.has_value() || next.value().GetType() != TokenType::RIGHT_BRACE)
                     return std::make_optional<CompilationError>(_current_pos, ErrorCode::ErrNoBrace);
+
+                for (int i = 0; i < table.GetNextOffset(); i++)
+                    addInstruction(POP, 0, 0);
+
+                err = table.PreviousLevel();
+                if (err.has_value())
+                    return err;
                 break;
             }
             case TokenType::IF:
@@ -393,25 +460,49 @@ namespace c0 {
         return {};
     }
 
-    std::optional<CompilationError> Analyser::analyseCondition() {
+    std::optional<CompilationError> Analyser::analyseCondition(int32_t &falseJumpAddress) {
         // <condition> ::= <expression>[<relational-operator><expression>]
         // <relational-operator>     ::= '<' | '<=' | '>' | '>=' | '!=' | '=='
         auto err = analyseExpression();
         if (err.has_value())
             return err;
+
         auto next = nextToken(); // <relational-operator>
-        if (!next.has_value() || (next.value().GetType() != TokenType::LESS_SIGN &&
-                                  next.value().GetType() != TokenType::LESS_OR_EQUAL_SIGN &&
-                                  next.value().GetType() != TokenType::GREATER_SIGN &&
-                                  next.value().GetType() != TokenType::GREATER_OR_EQUAL_SIGN &&
-                                  next.value().GetType() != TokenType::NOT_EQUAL_SIGN &&
-                                  next.value().GetType() != TokenType::EQUAL_SIGN))
-            unreadToken();
-        else {
-            err = analyseExpression();
-            if (err.has_value())
-                return err;
+        if (!next.has_value())
+            return std::make_optional<CompilationError>(_current_pos, ErrorCode::ErrInvalidStatement);
+
+        // auto falseJpc = -1;
+        Operation type;
+        switch (next.value().GetType()) {
+            case LESS_SIGN: // <
+                type = JL;
+                break;
+            case LESS_OR_EQUAL_SIGN: // <=
+                type = JLE;
+                break;
+            case GREATER_SIGN: // >
+                type = JG;
+                break;
+            case GREATER_OR_EQUAL_SIGN: // >=
+                type = JGE;
+                break;
+            case EQUAL_SIGN:
+                type = JE;
+                break;
+            case NOT_EQUAL_SIGN:
+                type = JNE;
+                break;
+            default:
+                unreadToken();
+                addInstruction(ICMP, 0, 0);
+                falseJumpAddress = addInstruction(JNE, 0, 0) + 1;
+                return {};
         }
+        err = analyseExpression();
+        if (err.has_value())
+            return err;
+        addInstruction(ICMP, 0, 0);
+        falseJumpAddress = addInstruction(type, 0, 0);
         return {};
     }
 
@@ -429,7 +520,8 @@ namespace c0 {
             if (!next.has_value() || next.value().GetType() != TokenType::LEFT_BRACKET)
                 return std::make_optional<CompilationError>(_current_pos, ErrorCode::ErrNoBracket);
 
-            auto err = analyseCondition();
+            int32_t falseJumpAddress = -1;
+            auto err = analyseCondition(falseJumpAddress);
             if (err.has_value())
                 return err;
 
@@ -441,12 +533,20 @@ namespace c0 {
             if (err.has_value())
                 return err;
 
+            int32_t trueJumpAddress = _code_offset + 1;
+            int32_t noCondition = addInstruction(JMP, 0, 0);
+            int32_t finalJumpAddress = -1;
+
             next = nextToken(); // optional else
             if (next.has_value() && next.value().GetType() == TokenType::ELSE) {
                 err = analyseStatement(); // statement
                 if (err.has_value())
                     return err;
+                finalJumpAddress = _code_offset;
             } else unreadToken();
+            updateInstruction(noCondition, finalJumpAddress, 0);
+            updateInstruction(falseJumpAddress, trueJumpAddress, 0);
+
         } else { // switch
             next = nextToken(); // (
             if (!next.has_value() || next.value().GetType() != TokenType::LEFT_BRACKET)
@@ -514,15 +614,23 @@ namespace c0 {
                 next = nextToken(); // (
                 if (!next.has_value() || next.value().GetType() != TokenType::LEFT_BRACKET)
                     return std::make_optional<CompilationError>(_current_pos, ErrorCode::ErrInvalidStatement);
-                auto err = analyseCondition();
+
+                auto startAddress = _code_offset;
+                int32_t falseJumpAddress = -1;
+                auto err = analyseCondition(falseJumpAddress);
                 if (err.has_value())
                     return err;
+
                 next = nextToken(); // )
                 if (!next.has_value() || next.value().GetType() != TokenType::RIGHT_BRACKET)
                     return std::make_optional<CompilationError>(_current_pos, ErrorCode::ErrInvalidStatement);
+
                 err = analyseStatement();
                 if (err.has_value())
                     return err;
+                addInstruction(JMP, startAddress, 0);
+                auto finishAddress = _code_offset;
+                updateInstruction(falseJumpAddress, finishAddress, 0);
                 break;
             }
             case TokenType::DO: {
@@ -536,7 +644,8 @@ namespace c0 {
                 next = nextToken(); // (
                 if (!next.has_value() || next.value().GetType() != TokenType::LEFT_BRACKET)
                     return std::make_optional<CompilationError>(_current_pos, ErrorCode::ErrInvalidStatement);
-                err = analyseCondition();
+                int32_t falseJumpAddress = -1;
+                err = analyseCondition(falseJumpAddress);
                 if (err.has_value())
                     return err;
                 next = nextToken(); // )
@@ -578,7 +687,8 @@ namespace c0 {
                 next = nextToken(); // [<condition>]
                 if (!next.has_value() || next.value().GetType() != TokenType::SEMICOLON) {
                     unreadToken();
-                    auto err = analyseCondition();
+                    int32_t falseJumpAddress = -1;
+                    auto err = analyseCondition(falseJumpAddress);
                     if (err.has_value())
                         return err;
                     next = nextToken(); // ;
@@ -614,8 +724,7 @@ namespace c0 {
                             auto err = analyseFunctionCall();
                             if (err.has_value())
                                 return err;
-                        } else
-                            return std::make_optional<CompilationError>(_current_pos, ErrorCode::ErrInvalidStatement);
+                        }
 
                         next = nextToken();
                         if (!next.has_value() || next.value().GetType() != TokenType::COMMA) {
@@ -662,9 +771,17 @@ namespace c0 {
                     auto err = analyseExpression();
                     if (err.has_value())
                         return err;
+                    if (_context.GetReturnType() == VOID_TYPE)
+                        return std::make_optional<CompilationError>(_current_pos, ErrorCode::ErrNoReturnValue);
+                    addInstruction(IRET, 0, 0);
                     next = nextToken(); // ;
                     if (!next.has_value() || next.value().GetType() != TokenType::SEMICOLON)
                         return std::make_optional<CompilationError>(_current_pos, ErrorCode::ErrNoSemicolon);
+                } else {
+                    if (_context.GetReturnType() == VOID_TYPE)
+                        addInstruction(RET, 0, 0);
+                    else
+                        return std::make_optional<CompilationError>(_current_pos, ErrorCode::ErrNoReturnValue);
                 }
                 break;
             }
@@ -704,11 +821,25 @@ namespace c0 {
                     return std::make_optional<CompilationError>(_current_pos, ErrorCode::ErrInvalidStatement);
                 if (next.value().GetType() == TokenType::STRING_LITERAL) {
                     // do something
+                    auto val = next.value().GetValueString();
+                    auto global = table.GetGlobalConstant(val);
+                    if (!global.has_value()) { // remove "" from string literal
+                        val = val.substr(1, val.length() - 1);
+                        table.AddGlobalConstant(val, val, STRING_TYPE);
+                        global = table.GetGlobalConstant(val);
+                    }
+                    addInstruction(LOADC, global.value().GetIndex(), 0);
+                    addInstruction(SPRINT, 0, 0);
                     next = nextToken();
+                } else if (next.value().GetType() == TokenType::CHAR_LITERAL) {
+                    addInstruction(IPUSH, (int) next.value().GetValueString()[1],
+                                   0); // remove '' from char literal
+                    addInstruction(CPRINT, 0, 0);
                 } else { // must be expression
                     auto err = analyseExpression();
                     if (err.has_value())
                         return err;
+                    addInstruction(IPRINT, 0, 0);
                 }
                 next = nextToken(); // ,
                 if (!next.has_value() || next.value().GetType() != TokenType::COMMA) {
@@ -739,12 +870,30 @@ namespace c0 {
         next = nextToken(); // identifier
         if (!next.has_value() || next.value().GetType() != TokenType::IDENTIFIER)
             return std::make_optional<CompilationError>(_current_pos, ErrorCode::ErrNeedIdentifier);
+
+        // auto type = next.value().GetType();
+        auto entry = table.FindSymbol(next.value().GetValueString());
+        if (!entry.has_value())
+            return std::make_optional<CompilationError>(_current_pos, ErrorCode::ErrNotDeclared);
+        else if (entry.value().GetType() == CONSTANT || entry.value().GetType() == CONSTANT_ARGUMENT ||
+                 entry.value().GetType() == FUNCTION)
+            return std::make_optional<CompilationError>(_current_pos, ErrorCode::ErrAssignToConstant);
+
         next = nextToken(); // )
         if (!next.has_value() || next.value().GetType() != TokenType::RIGHT_BRACKET)
             return std::make_optional<CompilationError>(_current_pos, ErrorCode::ErrNoBracket);
         next = nextToken(); // ;
         if (!next.has_value() || next.value().GetType() != TokenType::SEMICOLON)
             return std::make_optional<CompilationError>(_current_pos, ErrorCode::ErrNoSemicolon);
+
+        auto offset = getOffset(entry.value());
+        auto level = entry.value().GetLevel();
+        addInstruction(LOADA, level != 0, offset);
+        if (entry.value().GetValueType() == CHAR_TYPE)
+            addInstruction(CSCAN, 0, 0);
+        else if (entry.value().GetValueType() == INTEGER_TYPE)
+            addInstruction(ISCAN, 0, 0);
+        addInstruction(ISTORE, 0, 0);
         return {};
     }
 
@@ -763,11 +912,16 @@ namespace c0 {
                 unreadToken();
                 break;
             }
-            // if (next.value().GetType() == TokenType::PLUS_SIGN);
-            // else if (next.value().GetType() == TokenType::MINUS_SIGN); // do something
+            Operation type;
+            if (next.value().GetType() == TokenType::PLUS_SIGN)
+                type = IADD;
+            else if (next.value().GetType() == TokenType::MINUS_SIGN)
+                type = ISUB;
+            else return std::make_optional<CompilationError>(_current_pos, ErrorCode::ErrIncompleteExpression);
             err = analyseMultiplicativeExpression();
             if (err.has_value())
                 return err;
+            addInstruction(type, 0, 0);
         }
         return {};
     }
@@ -785,11 +939,16 @@ namespace c0 {
                 unreadToken();
                 break;
             }
-            // if (next.value().GetType() == TokenType::MULTIPLICATION_SIGN);
-            // else if (next.value().GetType() == TokenType::DIVISION_SIGN); // do something
+            Operation type;
+            if (next.value().GetType() == TokenType::MULTIPLICATION_SIGN)
+                type = IMUL;
+            else if (next.value().GetType() == TokenType::DIVISION_SIGN)
+                type = IDIV;
+            else return std::make_optional<CompilationError>(_current_pos, ErrorCode::ErrIncompleteExpression);
             auto err = analyseCastExpression();
             if (err.has_value())
                 return err;
+            addInstruction(type, 0, 0);
         }
         return {};
     }
@@ -844,7 +1003,8 @@ namespace c0 {
             prefix = 1;
         else if (next.value().GetType() == TokenType::MINUS_SIGN) {
             prefix = -1;
-            _instructions.emplace_back(Operation::LIT, 0);
+            // _instructions.emplace_back(Operation::LIT, 0);
+            // TODO prefix
         } else
             unreadToken();
 
@@ -878,19 +1038,39 @@ namespace c0 {
             case TokenType::IDENTIFIER: { // <identifier>, <function-call>
                 next = nextToken();
                 unreadToken();
+                unreadToken();
                 if (next.has_value() && next.value().GetType() == LEFT_BRACKET) {
-                    unreadToken();
                     auto err = analyseFunctionCall();
                     if (err.has_value())
                         return err;
+                } else {
+                    next = nextToken();
+                    auto val = next.value().GetValueString();
+                    auto entry = table.FindSymbol(val);
+                    if (!entry.has_value())
+                        return std::make_optional<CompilationError>(_current_pos, ErrorCode::ErrNotDeclared);
+                    if (entry.value().GetType() == CONSTANT || entry.value().GetType() == CONSTANT_ARGUMENT)
+                        addInstruction(IPUSH, std::any_cast<int32_t>(entry.value().GetValue()), 0);
+                    else if (entry.value().GetType() == VARIABLE || entry.value().GetType() == ARGUMENT) {
+                        auto level = entry.value().GetLevel();
+                        auto offset = getOffset(entry.value());
+                        addInstruction(LOADA, level == 0, offset);
+                        addInstruction(ILOAD, 0, 0);
+                    }
                 }
                 break;
             }
             case TokenType::DECIMAL_LITERAL:
-            case TokenType::HEXADECIMAL_LITERAL:
-            case TokenType::CHAR_LITERAL:
-            case TokenType::FLOATING_LITERAL:
+                addInstruction(IPUSH, std::stoul(next.value().GetValueString()), 0);
                 break;
+            case TokenType::HEXADECIMAL_LITERAL:
+                addInstruction(IPUSH, std::stoul(next.value().GetValueString(), nullptr, 16), 0);
+                break;
+            case TokenType::CHAR_LITERAL:
+                addInstruction(IPUSH, next.value().GetValueString()[1], 0);
+                break;
+            case TokenType::FLOATING_LITERAL:
+                return std::make_optional<CompilationError>(_current_pos, ErrorCode::ErrWIP);
             default:
                 return std::make_optional<CompilationError>(_current_pos, ErrorCode::ErrIncompleteExpression);
         }
@@ -903,9 +1083,17 @@ namespace c0 {
         auto next = nextToken();
         if (!next.has_value() || next.value().GetType() != TokenType::IDENTIFIER)
             return std::make_optional<CompilationError>(_current_pos, ErrorCode::ErrNeedIdentifier);
+
+        auto name = next.value().GetValueString();
+        auto function = table.GetGlobalFunction(name);
+        if (!function.has_value())
+            return std::make_optional<CompilationError>(_current_pos, ErrorCode::ErrNotDeclared);
+
         next = nextToken();
         if (!next.has_value() || next.value().GetType() != TokenType::LEFT_BRACKET)
             return std::make_optional<CompilationError>(_current_pos, ErrorCode::ErrNoBracket);
+
+        int argc = 0;
         next = nextToken();
         if (!next.has_value() || next.value().GetType() != TokenType::RIGHT_BRACKET) {
             unreadToken();
@@ -913,6 +1101,7 @@ namespace c0 {
                 auto err = analyseExpression();
                 if (err.has_value())
                     return err;
+                argc++;
                 next = nextToken();
                 if (!next.has_value() || next.value().GetType() != TokenType::COMMA) {
                     unreadToken();
@@ -923,6 +1112,9 @@ namespace c0 {
             if (!next.has_value() || next.value().GetType() != TokenType::RIGHT_BRACKET)
                 return std::make_optional<CompilationError>(_current_pos,
                                                             ErrorCode::ErrNoBracket);
+            if (argc != function.value().GetParamsSize())
+                return std::make_optional<CompilationError>(_current_pos, ErrorCode::ErrParamsSizeNotIdentical);
+            addInstruction(CALL, function.value().GetIndex(), 0);
         }
         return {};
     }
@@ -933,17 +1125,23 @@ namespace c0 {
         auto next = nextToken();
         if (!next.has_value() || next.value().GetType() != TokenType::IDENTIFIER)
             return std::make_optional<CompilationError>(_current_pos, ErrorCode::ErrNeedIdentifier);
-        auto str = next.value().GetValueString();
+        auto name = next.value().GetValueString();
 //        if (isDeclared(next.value().GetValueString()))
 //            return std::make_optional<CompilationError>(_current_pos, ErrorCode::ErrDuplicateDeclaration);
         //if (!isDeclared(str))
         //    return std::make_optional<CompilationError>(_current_pos, ErrorCode::ErrNotDeclared);
         //if (isConstant(str))
         //    return std::make_optional<CompilationError>(_current_pos, ErrorCode::ErrAssignToConstant);
-        if (isUninitializedVariable(str)) {
-            _vars[str] = _uninitialized_vars[str];
-            _uninitialized_vars.erase(str);
-        }
+//        if (isUninitializedVariable(str)) {
+//            _vars[str] = _uninitialized_vars[str];
+//            _uninitialized_vars.erase(str);
+//        }
+        auto entry = table.FindSymbol(name);
+        if (!entry.has_value())
+            return std::make_optional<CompilationError>(_current_pos, ErrorCode::ErrNotDeclared);
+        if (entry.value().GetType() == FUNCTION || entry.value().GetType() == CONSTANT ||
+            entry.value().GetType() == CONSTANT_ARGUMENT)
+            return std::make_optional<CompilationError>(_current_pos, ErrorCode::ErrAssignToConstant);
 
         next = nextToken(); // '='
         if (!next.has_value() ||
@@ -955,7 +1153,8 @@ namespace c0 {
         if (err.has_value())
             return err;
         // no semicolon
-        _instructions.emplace_back(Operation::STO, getIndex(str));
+        // _instructions.emplace_back(Operation::STO, getIndex(str));
+        addInstruction(ISTORE, 0, 0);
         return {};
     }
 
@@ -980,6 +1179,16 @@ namespace c0 {
             DieAndPrint("only identifier can be added to the table.");
         mp[tk.GetValueString()] = _nextTokenIndex;
         _nextTokenIndex++;
+    }
+
+    size_t Analyser::addInstruction(Operation type, int x, int y) {
+        _instructions.emplace_back(type, x, y, _code_offset++);
+        return _instructions.size() - 1;
+    }
+
+    void Analyser::updateInstruction(size_t index, int32_t x, int32_t y) {
+        _instructions[index].SetX(x);
+        _instructions[index].SetY(y);
     }
 
     void Analyser::addVariable(const Token &tk) {
