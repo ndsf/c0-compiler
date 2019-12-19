@@ -375,17 +375,17 @@ namespace c0 {
             case TokenType::LEFT_BRACE: { // <compound-statement>
                 table.NextLevel();
 
-                next = nextToken(); // {
-                if (!next.has_value() || next.value().GetType() != TokenType::LEFT_BRACE)
-                    return std::make_optional<CompilationError>(_current_pos, ErrorCode::ErrNoBrace);
+//                next = nextToken(); // {
+//                if (!next.has_value() || next.value().GetType() != TokenType::LEFT_BRACE)
+//                    return std::make_optional<CompilationError>(_current_pos, ErrorCode::ErrNoBrace);
 
                 err = analyseCompoundStatement();
                 if (err.has_value())
                     return err;
 
-                next = nextToken(); // }
-                if (!next.has_value() || next.value().GetType() != TokenType::RIGHT_BRACE)
-                    return std::make_optional<CompilationError>(_current_pos, ErrorCode::ErrNoBrace);
+//                next = nextToken(); // }
+//                if (!next.has_value() || next.value().GetType() != TokenType::RIGHT_BRACE)
+//                    return std::make_optional<CompilationError>(_current_pos, ErrorCode::ErrNoBrace);
 
                 for (int i = 0; i < table.GetNextOffset(); i++)
                     addInstruction(POP, 0, 0);
