@@ -71,7 +71,7 @@ void Analyse(std::istream &input, std::ostream &output) {
         }
     }
 
-    output << ".starts:\n";
+    output << ".start:\n";
     bool sm = false;
     int funcIndex = 0;
     int j = 0;
@@ -85,15 +85,15 @@ void Analyse(std::istream &input, std::ostream &output) {
             sm = true;
         }
         switch (needParameterNum(instruction.GetOperation())) {
-            case 1:
-                output << fmt::format("{} {} {}\n", instruction.GetIndex(), instruction, instruction.GetX());
+            case 1: // TODO remove this
+                output << fmt::format("{} {} {}\n", instruction.GetIndex(), instruction.GetOperation(), instruction.GetX());
                 break;
             case 2:
-                output << fmt::format("{} {} {} {}\n", instruction.GetIndex(), instruction, instruction.GetX(),
+                output << fmt::format("{} {} {}, {}\n", instruction.GetIndex(), instruction.GetOperation(), instruction.GetX(),
                                       instruction.GetY());
                 break;
             case 0:
-                output << fmt::format("{} {}\n", instruction.GetIndex(), instruction);
+                output << fmt::format("{} {}\n", instruction.GetIndex(), instruction.GetOperation());
                 break;
         }
     }
@@ -117,7 +117,7 @@ void Analyse(std::istream &input, std::ostream &output) {
                 output << fmt::format("{} {} {}\n", instruction.GetIndex(), instruction.GetOperation(), instruction.GetX());
                 break;
             case 2:
-                output << fmt::format("{} {} {} {}\n", instruction.GetIndex(), instruction.GetOperation(), instruction.GetX(), instruction.GetY());
+                output << fmt::format("{} {} {}, {}\n", instruction.GetIndex(), instruction.GetOperation(), instruction.GetX(), instruction.GetY());
                 break;
             case 0:
                 output << fmt::format("{} {}\n", instruction.GetIndex(), instruction.GetOperation());
