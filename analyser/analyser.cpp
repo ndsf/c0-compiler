@@ -7,6 +7,7 @@ namespace c0 {
 
     std::tuple<std::vector<Instruction>, std::vector<GlobalConstant>, std::vector<GlobalFunction>, std::optional<CompilationError>> Analyser::Analyse() {
         isMainDefined = false;
+        addInstruction(NOP, 0, 0);
         auto err = analyseProgram();
         if (err.has_value())
             // return std::make_pair(std::vector<Instruction>(), err);
