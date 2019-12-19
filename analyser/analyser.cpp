@@ -448,9 +448,15 @@ namespace c0 {
                         break;
                     }
                     case TokenType::LEFT_BRACKET: {
+                        next = nextToken();
+                        unreadToken();
+                        auto name = next.value().GetValueString();
+                        auto function = table.GetGlobalFunction(name);
                         err = analyseFunctionCall();
                         if (err.has_value())
                             return err;
+                        if (function.value().GetReturnType() != VOID_TYPE)
+                            addInstruction(POP, 0, 0);
                         break;
                     }
                     default:
@@ -1127,8 +1133,6 @@ namespace c0 {
                 return std::make_optional<CompilationError>(_current_pos, ErrorCode::ErrParamsSizeNotIdentical);
             addInstruction(CALL, function.value().GetIndex(), 0);
         }
-        if (function->GetReturnType() != VOID_TYPE)
-            addInstruction(POP, 0, 0);
         return {};
     }
 
