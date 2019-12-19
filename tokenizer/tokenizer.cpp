@@ -337,7 +337,7 @@ namespace c0 {
                                                                                        ErrorCode::ErrInvalidInput));
                         else
                             return std::make_pair(
-                                    std::make_optional<Token>(TokenType::HEXADECIMAL_LITERAL, ss.str(), pos,
+                                    std::make_optional<Token>(TokenType::DECIMAL_LITERAL, std::stoi(ss.str(), nullptr, 16), pos,
                                                               currentPos()),
                                     std::optional<CompilationError>());
                     } else {
@@ -355,7 +355,7 @@ namespace c0 {
                                                                                            ErrorCode::ErrInvalidInput));
                             else
                                 return std::make_pair(
-                                        std::make_optional<Token>(TokenType::HEXADECIMAL_LITERAL, ss.str(), pos,
+                                        std::make_optional<Token>(TokenType::DECIMAL_LITERAL, std::stoi(ss.str(), nullptr, 16), pos,
                                                                   currentPos()),
                                         std::optional<CompilationError>());
                         }

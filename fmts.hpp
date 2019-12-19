@@ -284,9 +284,6 @@ namespace fmt {
                 case c0::CONTINUE:
                     name = "Continue";
                     break;
-                case c0::HEXADECIMAL_LITERAL:
-                    name = "HexadecimalDigit";
-                    break;
                 default:
                     name = "Noname";
                     break;

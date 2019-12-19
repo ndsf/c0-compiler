@@ -1077,9 +1077,6 @@ namespace c0 {
             case TokenType::DECIMAL_LITERAL:
                 addInstruction(IPUSH, std::stoul(next.value().GetValueString()), 0);
                 break;
-            case TokenType::HEXADECIMAL_LITERAL:
-                addInstruction(IPUSH, std::stoul(next.value().GetValueString(), nullptr, 16), 0);
-                break;
             case TokenType::CHAR_LITERAL:
                 addInstruction(IPUSH, next.value().GetValueString()[1], 0);
                 break;
