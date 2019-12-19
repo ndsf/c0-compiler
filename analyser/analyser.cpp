@@ -1129,10 +1129,10 @@ namespace c0 {
             if (!next.has_value() || next.value().GetType() != TokenType::RIGHT_BRACKET)
                 return std::make_optional<CompilationError>(_current_pos,
                                                             ErrorCode::ErrNoBracket);
-            if (argc != function.value().GetParamsSize())
-                return std::make_optional<CompilationError>(_current_pos, ErrorCode::ErrParamsSizeNotIdentical);
-            addInstruction(CALL, function.value().GetIndex(), 0);
         }
+        if (argc != function.value().GetParamsSize())
+            return std::make_optional<CompilationError>(_current_pos, ErrorCode::ErrParamsSizeNotIdentical);
+        addInstruction(CALL, function.value().GetIndex(), 0);
         return {};
     }
 

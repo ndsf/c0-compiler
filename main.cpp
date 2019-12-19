@@ -35,7 +35,7 @@ int32_t needParameterNum(c0::Operation type) {
     if (type == c0::LOADA)
         return 2;
     else if (type == c0::IPUSH || type == c0::LOADC || isJump(type) ||
-             type == c0::CALL)
+             type == c0::CALL || type == c0::BIPUSH)
         return 1;
     else
         return 0;
