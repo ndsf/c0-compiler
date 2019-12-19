@@ -42,7 +42,10 @@ namespace c0 {
         ISCAN,
         CSCAN,
         NOP,
-        POP
+        POP,
+        INEG,
+        BIPUSH,
+        PRINTL
     };
 
     class Instruction final {

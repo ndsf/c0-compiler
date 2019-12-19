@@ -414,6 +414,15 @@ namespace fmt {
                 case c0::POP:
                     name = "POP";
                     break;
+                case c0::INEG:
+                    name = "INEG";
+                    break;
+                case c0::BIPUSH:
+                    name = "BIPUSH";
+                    break;
+                case c0::PRINTL:
+                    name = "PRINTL";
+                    break;
             }
             return format_to(ctx.out(), name);
         }

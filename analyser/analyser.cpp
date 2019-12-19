@@ -5,7 +5,8 @@
 namespace c0 {
     bool isMainDefined;
 
-    std::tuple<std::vector<Instruction>, std::vector<GlobalConstant>, std::vector<GlobalFunction>, std::optional<CompilationError>> Analyser::Analyse() {
+    std::tuple<std::vector<Instruction>, std::vector<GlobalConstant>, std::vector<GlobalFunction>, std::optional<CompilationError>>
+    Analyser::Analyse() {
         isMainDefined = false;
         addInstruction(NOP, 0, 0);
         auto err = analyseProgram();
@@ -14,7 +15,6 @@ namespace c0 {
             return {std::vector<Instruction>(), std::vector<GlobalConstant>(), std::vector<GlobalFunction>(), err};
         else
             return {_instructions, table._global_constants, table._global_functions, std::optional<CompilationError>()};
-            // return std::make_pair(_instructions, std::optional<CompilationError>());
     }
 
     std::optional<CompilationError> Analyser::analyseProgram() {
@@ -136,7 +136,7 @@ namespace c0 {
             next = nextToken();
             if (next.has_value() && next.value().GetType() == TokenType::ASSIGNMENT_OPERATOR) {
                 // transInsert(name, type, isConst)
-                table.UpdateSymbol(name, 0, isConst ? CONSTANT : VARIABLE, type);
+                table.UpdateSymbol(name, 0, isConst ? CONSTANT : VARIABLE, type); // TODO change value
                 auto entry = table.FindSymbol(name);
                 // auto level = entry.value().GetLevel();
                 // auto offset = getOffset(entry.value());
@@ -275,6 +275,14 @@ namespace c0 {
         err = table.PreviousLevel();
         if (err.has_value())
             return err;
+
+        auto function = table.GetGlobalFunction(name);
+        if (function.value().GetReturnType() == VOID)
+            addInstruction(RET, 0, 0);
+        else {
+            addInstruction(IPUSH, 0, 0);
+            addInstruction(IRET, 0, 0);
+        }
         return {};
     }
 
@@ -476,27 +484,28 @@ namespace c0 {
         Operation type;
         switch (next.value().GetType()) {
             case LESS_SIGN: // <
-                type = JL;
-                break;
-            case LESS_OR_EQUAL_SIGN: // <=
-                type = JLE;
-                break;
-            case GREATER_SIGN: // >
-                type = JG;
-                break;
-            case GREATER_OR_EQUAL_SIGN: // >=
                 type = JGE;
                 break;
+            case LESS_OR_EQUAL_SIGN: // <=
+                type = JG;
+                break;
+            case GREATER_SIGN: // >
+                type = JLE;
+                break;
+            case GREATER_OR_EQUAL_SIGN: // >=
+                type = JL;
+                break;
             case EQUAL_SIGN:
-                type = JE;
+                type = JNE;
                 break;
             case NOT_EQUAL_SIGN:
-                type = JNE;
+                type = JE;
                 break;
             default:
                 unreadToken();
+                addInstruction(IPUSH, 0, 0);
                 addInstruction(ICMP, 0, 0);
-                falseJumpAddress = addInstruction(JNE, 0, 0) + 1;
+                falseJumpAddress = addInstruction(JE, 0, 0);
                 return {};
         }
         err = analyseExpression();
@@ -544,7 +553,10 @@ namespace c0 {
                 if (err.has_value())
                     return err;
                 finalJumpAddress = _code_offset;
-            } else unreadToken();
+            } else {
+                unreadToken();
+                finalJumpAddress = _code_offset;
+            }
             updateInstruction(noCondition, finalJumpAddress, 0);
             updateInstruction(falseJumpAddress, trueJumpAddress, 0);
 
@@ -833,8 +845,8 @@ namespace c0 {
                     addInstruction(SPRINT, 0, 0);
                     next = nextToken();
                 } else if (next.value().GetType() == TokenType::CHAR_LITERAL) {
-                    addInstruction(IPUSH, (int) next.value().GetValueString()[1],
-                                   0); // remove '' from char literal
+                    addInstruction(IPUSH, next.value().GetValueString()[1], 0);
+                    // remove '' from char literal
                     addInstruction(CPRINT, 0, 0);
                 } else { // must be expression
                     auto err = analyseExpression();
@@ -846,6 +858,9 @@ namespace c0 {
                 if (!next.has_value() || next.value().GetType() != TokenType::COMMA) {
                     unreadToken();
                     break;
+                } else {
+                    addInstruction(BIPUSH, 32, 0);
+                    addInstruction(CPRINT, 0, 0);
                 }
             }
             next = nextToken(); // )
@@ -857,6 +872,7 @@ namespace c0 {
         if (!next.has_value() || next.value().GetType() != TokenType::SEMICOLON)
             return std::make_optional<CompilationError>(_current_pos, ErrorCode::ErrNoSemicolon);
 
+        addInstruction(PRINTL, 0, 0);
         return {};
     }
 
@@ -889,11 +905,8 @@ namespace c0 {
 
         auto offset = getOffset(entry.value());
         auto level = entry.value().GetLevel();
-        addInstruction(LOADA, level != 0, offset);
-        if (entry.value().GetValueType() == CHAR_TYPE)
-            addInstruction(CSCAN, 0, 0);
-        else if (entry.value().GetValueType() == INTEGER_TYPE)
-            addInstruction(ISCAN, 0, 0);
+        addInstruction(LOADA, level == 0, offset);
+        addInstruction(ISCAN, 0, 0);
         addInstruction(ISTORE, 0, 0);
         return {};
     }
@@ -1012,6 +1025,8 @@ namespace c0 {
         auto err = analysePrimaryExpression();
         if (err.has_value())
             return err;
+        if (prefix == -1)
+            addInstruction(INEG, 0, 0);
         return {};
     }
 
@@ -1050,14 +1065,12 @@ namespace c0 {
                     auto entry = table.FindSymbol(val);
                     if (!entry.has_value())
                         return std::make_optional<CompilationError>(_current_pos, ErrorCode::ErrNotDeclared);
-                    if (entry.value().GetType() == CONSTANT || entry.value().GetType() == CONSTANT_ARGUMENT)
-                        addInstruction(IPUSH, std::any_cast<int32_t>(entry.value().GetValue()), 0);
-                    else if (entry.value().GetType() == VARIABLE || entry.value().GetType() == ARGUMENT) {
-                        auto level = entry.value().GetLevel();
-                        auto offset = getOffset(entry.value());
-                        addInstruction(LOADA, level == 0, offset);
-                        addInstruction(ILOAD, 0, 0);
-                    }
+
+                    auto level = entry.value().GetLevel();
+                    auto offset = getOffset(entry.value());
+                    addInstruction(LOADA, level == 0, offset);
+                    addInstruction(ILOAD, 0, 0);
+
                 }
                 break;
             }
@@ -1117,6 +1130,8 @@ namespace c0 {
                 return std::make_optional<CompilationError>(_current_pos, ErrorCode::ErrParamsSizeNotIdentical);
             addInstruction(CALL, function.value().GetIndex(), 0);
         }
+        if (function->GetReturnType() != VOID_TYPE)
+            addInstruction(POP, 0, 0);
         return {};
     }
 
@@ -1143,6 +1158,10 @@ namespace c0 {
         if (entry.value().GetType() == FUNCTION || entry.value().GetType() == CONSTANT ||
             entry.value().GetType() == CONSTANT_ARGUMENT)
             return std::make_optional<CompilationError>(_current_pos, ErrorCode::ErrAssignToConstant);
+
+        auto level = entry.value().GetLevel();
+        auto offset = entry.value().GetOffset();
+        addInstruction(LOADA, level == 0, offset);
 
         next = nextToken(); // '='
         if (!next.has_value() ||
