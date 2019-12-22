@@ -114,6 +114,9 @@ namespace fmt {
                 case c0::ErrWIP:
                     name = "WIP feature.";
                     break;
+                case c0::ErrUseVoidFunctionInPrimaryExpression:
+                    name = "Use void function in primary expression.";
+                    break;
             }
             return format_to(ctx.out(), name);
         }

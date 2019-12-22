@@ -51,7 +51,8 @@ namespace c0 {
         ErrNoPreviousLevel,
         ErrNoReturnValue,
         ErrParamsSizeNotIdentical,
-        ErrWIP
+        ErrWIP,
+        ErrUseVoidFunctionInPrimaryExpression
 	};
 
 	class CompilationError final{

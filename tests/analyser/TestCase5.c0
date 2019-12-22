@@ -1,35 +1,8 @@
-void swap(int x,int y)
-{
-  int temp;
-  temp=x;
-  x=y;
-  y=temp;
+int f() {
+    return;
 }
-
-int mod(int x,int y) 
+int main()
 {
-  return (x-x/y*y);
-}
-
-void main()
-{
-  int a,b,c,temp1,temp2,result1,result2;
-  scan(a);
-  scan(b);	
-  temp1=a;
-  temp2=b;
-  if (temp1!=0)
-  {
-     print("t1=",temp1);
-     print("t2=",temp2);
-     swap(temp1,temp2);
-     print("t1=",temp1);
-     print("t2=",temp2);
-     c= mod(a,b);
-     print("mod(a,b)=", c);
-  }
-  result1=temp2;
-  result2=a*b/result1;
-  print(result1);
-  print(result2);
+    f();
+    return 0;
 }

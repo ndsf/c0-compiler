@@ -180,7 +180,7 @@ namespace c0 {
             return std::make_optional<CompilationError>(_current_pos, ErrorCode::ErrNoTypeSpecifier);
 
         // auto type = next.value().GetType();
-        ValueType type = tokenTypeToValueType(next.value().GetType());
+        ValueType returnType = tokenTypeToValueType(next.value().GetType());
 
         next = nextToken(); // <identifier>
         if (!next.has_value() || next.value().GetType() != TokenType::IDENTIFIER)
@@ -227,7 +227,7 @@ namespace c0 {
             }
 
             // now next must be a <type-specifier>
-            type = tokenTypeToValueType(next.value().GetType());
+            auto type = tokenTypeToValueType(next.value().GetType());
 
             next = nextToken(); // <identifier>
             if (!next.has_value() || next.value().GetType() != TokenType::IDENTIFIER)
@@ -261,7 +261,7 @@ namespace c0 {
         if (err.has_value())
             return err;
 
-        table.AddGlobalFunction(name, args.size(), table.GetCurrentLevel(), args, 0, type);
+        table.AddGlobalFunction(name, args.size(), table.GetCurrentLevel(), args, 0, returnType);
         _context = table.GetGlobalFunction(name).value();
 
         err = analyseStatementSequence();
@@ -785,7 +785,7 @@ namespace c0 {
             }
             case TokenType::RETURN: {
                 next = nextToken(); // ;
-                if (!next.has_value() || next.value().GetType() != TokenType::SEMICOLON) {
+                if (!next.has_value() || next.value().GetType() != TokenType::SEMICOLON) { // not ;
                     unreadToken();
                     auto err = analyseExpression();
                     if (err.has_value())
@@ -796,7 +796,7 @@ namespace c0 {
                     next = nextToken(); // ;
                     if (!next.has_value() || next.value().GetType() != TokenType::SEMICOLON)
                         return std::make_optional<CompilationError>(_current_pos, ErrorCode::ErrNoSemicolon);
-                } else {
+                } else { // ;
                     if (_context.GetReturnType() == VOID_TYPE)
                         addInstruction(RET, 0, 0);
                     else
@@ -1062,9 +1062,15 @@ namespace c0 {
                 unreadToken();
                 unreadToken();
                 if (next.has_value() && next.value().GetType() == LEFT_BRACKET) {
+                    next = nextToken();
+                    unreadToken();
+                    auto name = next.value().GetValueString();
+                    auto function = table.GetGlobalFunction(name);
                     auto err = analyseFunctionCall();
                     if (err.has_value())
                         return err;
+                    if (function.value().GetReturnType() == VOID_TYPE)
+                        return std::make_optional<CompilationError>(_current_pos, ErrorCode::ErrUseVoidFunctionInPrimaryExpression);
                 } else {
                     next = nextToken();
                     auto val = next.value().GetValueString();
