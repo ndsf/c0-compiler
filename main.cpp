@@ -7,6 +7,7 @@
 
 #include <iostream>
 #include <fstream>
+#include <regex>
 
 std::vector<c0::Token> _tokenize(std::istream &input) {
     c0::Tokenizer tkz(input);
@@ -39,20 +40,24 @@ void Analyse(std::istream &input, std::ostream &output) {
     output << ".constants:\n";
 
     for (auto constant : constants) {
-        switch (constant.GetType()) {
-            case c0::STRING_TYPE:
-                output << fmt::format("{} S \"{}\"\n", constant.GetIndex(),
-                                      std::any_cast<std::string>(constant.GetValue()));
-                break;
-            case c0::INTEGER_TYPE:
-                output << fmt::format("{} I {}\n", constant.GetIndex(),
-                                      std::any_cast<std::int32_t>(constant.GetValue()));
-                break;
-            case c0::FLOAT_TYPE: // WIP
-                output << fmt::format("{} D {}\n", constant.GetIndex(),
-                                      std::any_cast<std::string>(constant.GetValue()));
-                break; // cannot handle with other types
-        }
+//        switch (constant.GetType()) {
+//            case c0::STRING_TYPE:
+        auto result = std::any_cast<std::string>(constant.GetValue());
+        result = regex_replace(result, std::regex("\t"), "\\x09");
+        result = regex_replace(result, std::regex("\n"), "\\x0A");
+        result = regex_replace(result, std::regex("\r"), "\\x0D");
+        output << fmt::format("{} S \"{}\"\n", constant.GetIndex(), result);
+//                break;
+//            case c0::INTEGER_TYPE:
+//                output << fmt::format("{} I {}\n", constant.GetIndex(),
+//                                      std::any_cast<std::int32_t>(constant.GetValue()));
+//                break;
+//            case c0::FLOAT_TYPE: // WIP
+//            default:
+//                output << fmt::format("{} D {}\n", constant.GetIndex(),
+//                                      std::any_cast<std::string>(constant.GetValue()));
+//                break; // cannot handle with other types
+//        }
     }
 
     output << ".start:\n";
@@ -72,18 +77,19 @@ void Analyse(std::istream &input, std::ostream &output) {
     }
 
     output << ".functions:\n";
-    for(auto function : functions)
-        output << fmt::format("{} {} {} {}\n", function.GetIndex(), function.GetNameIndex(), function.GetParamsSize(), function.GetLevel());
+    for (auto function : functions)
+        output << fmt::format("{} {} {} {}\n", function.GetIndex(), function.GetNameIndex(), function.GetParamsSize(),
+                              function.GetLevel());
     sm = false;
     funcIndex = 0;
-    for(int i = j; i < instructions.size(); i++){
+    for (int i = j; i < instructions.size(); i++) {
         auto instruction = instructions[i];
-        if(instructions[i].GetIndex() == 0){
+        if (instructions[i].GetIndex() == 0) {
             output << fmt::format(".F{}:\n", funcIndex);
             funcIndex++;
         }
         output << fmt::format("{}\n", instruction);
-        if(funcIndex > functions.size())
+        if (funcIndex > functions.size())
             break;
     }
     return;
