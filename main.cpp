@@ -25,22 +25,6 @@ void Tokenize(std::istream &input, std::ostream &output) {
     return;
 }
 
-bool isJump(c0::Operation type) { // need removing
-    return (type == c0::JMP || type == c0::JNE || type == c0::JE
-            || type == c0::JG || type == c0::JL || type == c0::JLE || type == c0::JGE
-    );
-}
-
-int32_t needParameterNum(c0::Operation type) {
-    if (type == c0::LOADA)
-        return 2;
-    else if (type == c0::IPUSH || type == c0::LOADC || isJump(type) ||
-             type == c0::CALL || type == c0::BIPUSH)
-        return 1;
-    else
-        return 0;
-}
-
 void Analyse(std::istream &input, std::ostream &output) {
     auto tks = _tokenize(input);
     c0::Analyser analyser(tks);
@@ -84,22 +68,8 @@ void Analyse(std::istream &input, std::ostream &output) {
             }
             sm = true;
         }
-        switch (needParameterNum(instruction.GetOperation())) {
-            case 1: // TODO remove this
-                output << fmt::format("{} {} {}\n", instruction.GetIndex(), instruction.GetOperation(), instruction.GetX());
-                break;
-            case 2:
-                output << fmt::format("{} {} {}, {}\n", instruction.GetIndex(), instruction.GetOperation(), instruction.GetX(),
-                                      instruction.GetY());
-                break;
-            case 0:
-                output << fmt::format("{} {}\n", instruction.GetIndex(), instruction.GetOperation());
-                break;
-        }
+        output << fmt::format("{}\n", instruction);
     }
-
-//	for (auto& it : instructions)
-//		output << fmt::format("{}\n", it);
 
     output << ".functions:\n";
     for(auto function : functions)
@@ -112,17 +82,7 @@ void Analyse(std::istream &input, std::ostream &output) {
             output << fmt::format(".F{}:\n", funcIndex);
             funcIndex++;
         }
-        switch (needParameterNum(instruction.GetOperation())){
-            case 1:
-                output << fmt::format("{} {} {}\n", instruction.GetIndex(), instruction.GetOperation(), instruction.GetX());
-                break;
-            case 2:
-                output << fmt::format("{} {} {}, {}\n", instruction.GetIndex(), instruction.GetOperation(), instruction.GetX(), instruction.GetY());
-                break;
-            case 0:
-                output << fmt::format("{} {}\n", instruction.GetIndex(), instruction.GetOperation());
-                break;
-        }
+        output << fmt::format("{}\n", instruction);
         if(funcIndex > functions.size())
             break;
     }

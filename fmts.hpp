@@ -437,19 +437,22 @@ namespace fmt {
         auto format(const c0::Instruction &p, FormatContext &ctx) {
             std::string name;
             switch (p.GetOperation()) {
-//                case c0::ILL:
-//                case c0::ADD:
-//                case c0::SUB:
-//                case c0::MUL:
-//                case c0::DIV:
-//                case c0::WRT:
-//                    return format_to(ctx.out(), "{}", p.GetOperation());
-//                case c0::LIT:
-//                case c0::LOD:
-//                case c0::STO:
-//                    return format_to(ctx.out(), "{} {}", p.GetOperation(), p.GetX());
+                case c0::LOADA:
+                    return format_to(ctx.out(), "{} {} {}, {}", p.GetIndex(), p.GetOperation(), p.GetX(), p.GetY());
+                case c0::IPUSH:
+                case c0::LOADC:
+                case c0::CALL:
+                case c0::BIPUSH:
+                case c0::JMP:
+                case c0::JNE:
+                case c0::JE:
+                case c0::JG:
+                case c0::JL:
+                case c0::JLE:
+                case c0::JGE:
+                    return format_to(ctx.out(), "{} {} {}", p.GetIndex(), p.GetOperation(), p.GetX());
                 default:
-                    return format_to(ctx.out(), "{} {} {}", p.GetOperation(), p.GetX(), p.GetY());
+                    return format_to(ctx.out(), "{} {}", p.GetIndex(), p.GetOperation());
             }
             return format_to(ctx.out(), "ILL");
         }
