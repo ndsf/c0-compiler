@@ -495,7 +495,7 @@ namespace c0 {
                                                                                                ErrorCode::ErrInvalidCharLiteral));
                                 else
                                     return std::make_pair(
-                                            std::make_optional<Token>(TokenType::CHAR_LITERAL, ss.str(), pos,
+                                            std::make_optional<Token>(TokenType::CHAR_LITERAL, ss.str().substr(1, 1), pos,
                                                                       currentPos()),
                                             std::optional<CompilationError>()); // should not include '"', '\\'...
                             } else ss << ch;
@@ -546,9 +546,8 @@ namespace c0 {
                             if (ch == '\\') // don't write to ss
                                 escape += ch;
                             else if (ch == '"') {
-                                ss << ch;
                                 return std::make_pair(
-                                        std::make_optional<Token>(TokenType::STRING_LITERAL, ss.str(), pos,
+                                        std::make_optional<Token>(TokenType::STRING_LITERAL, ss.str().substr(1), pos,
                                                                   currentPos()),
                                         std::optional<CompilationError>()); // should not include '"', '\\'...
                             } else ss << ch;

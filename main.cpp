@@ -97,7 +97,7 @@ int main(int argc, char **argv) {
             .default_value(false)
             .implicit_value(true)
             .help("perform tokenization for the input file.");
-    program.add_argument("-l")
+    program.add_argument("-s")
             .default_value(false)
             .implicit_value(true)
             .help("perform syntactic analysis for the input file.");
@@ -139,13 +139,13 @@ int main(int argc, char **argv) {
         output = &outf;
     } else
         output = &std::cout;
-    if (program["-t"] == true && program["-l"] == true) {
+    if (program["-t"] == true && program["-s"] == true) {
         fmt::print(stderr, "You can only perform tokenization or syntactic analysis at one time.");
         exit(2);
     }
     if (program["-t"] == true) {
         Tokenize(*input, *output);
-    } else if (program["-l"] == true) {
+    } else if (program["-s"] == true) {
         Analyse(*input, *output);
     } else {
         fmt::print(stderr, "You must choose tokenization or syntactic analysis.");

@@ -135,11 +135,8 @@ namespace c0 {
             // optional <initializer>, <initializer> ::= '='<expression>
             next = nextToken();
             if (next.has_value() && next.value().GetType() == TokenType::ASSIGNMENT_OPERATOR) {
-                // transInsert(name, type, isConst)
-                table.UpdateSymbol(name, 0, isConst ? CONSTANT : VARIABLE, type); // TODO change value
+                table.UpdateSymbol(name, 0, isConst ? CONSTANT : VARIABLE, type);
                 auto entry = table.FindSymbol(name);
-                // auto level = entry.value().GetLevel();
-                // auto offset = getOffset(entry.value());
 
                 auto err = analyseExpression();
                 if (err.has_value())
@@ -842,8 +839,7 @@ namespace c0 {
                     // do something
                     auto val = next.value().GetValueString();
                     auto global = table.GetGlobalConstant(val);
-                    if (!global.has_value()) { // remove "" from string literal
-                        val = val.substr(1, val.length() - 1);
+                    if (!global.has_value()) {
                         table.AddGlobalConstant(val, val, STRING_TYPE);
                         global = table.GetGlobalConstant(val);
                     }
@@ -851,9 +847,9 @@ namespace c0 {
                     addInstruction(SPRINT, 0, 0);
                     next = nextToken();
                 } else if (next.value().GetType() == TokenType::CHAR_LITERAL) {
-                    addInstruction(IPUSH, next.value().GetValueString()[1], 0);
-                    // remove '' from char literal
+                    addInstruction(IPUSH, next.value().GetValueString()[0], 0);
                     addInstruction(CPRINT, 0, 0);
+                    next = nextToken();
                 } else { // must be expression
                     auto err = analyseExpression();
                     if (err.has_value())
@@ -987,7 +983,7 @@ namespace c0 {
                     case TokenType::VOID:
                     case TokenType::INT:
                     case TokenType::CHAR:
-                    case TokenType::DOUBLE: // TODO do something here
+                    case TokenType::DOUBLE:
                         next = nextToken();
                         if (!next.has_value() || next.value().GetType() != TokenType::RIGHT_BRACKET)
                             return std::make_optional<CompilationError>(_current_pos, ErrorCode::ErrNoBracket);
@@ -1021,11 +1017,9 @@ namespace c0 {
             return std::make_optional<CompilationError>(_current_pos, ErrorCode::ErrIncompleteExpression);
         if (next.value().GetType() == TokenType::PLUS_SIGN)
             prefix = 1;
-        else if (next.value().GetType() == TokenType::MINUS_SIGN) {
+        else if (next.value().GetType() == TokenType::MINUS_SIGN)
             prefix = -1;
-            // _instructions.emplace_back(Operation::LIT, 0);
-            // TODO prefix
-        } else
+        else
             unreadToken();
 
         auto err = analysePrimaryExpression();
@@ -1090,7 +1084,7 @@ namespace c0 {
                 addInstruction(IPUSH, std::stoul(next.value().GetValueString()), 0);
                 break;
             case TokenType::CHAR_LITERAL:
-                addInstruction(IPUSH, next.value().GetValueString()[1], 0);
+                addInstruction(IPUSH, next.value().GetValueString()[0], 0);
                 break;
             case TokenType::FLOATING_LITERAL:
                 return std::make_optional<CompilationError>(_current_pos, ErrorCode::ErrWIP);
