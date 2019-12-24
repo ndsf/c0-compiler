@@ -95,6 +95,10 @@ char getByte(c0::Operation op) {
             return 0xaf;
         case c0::BIPUSH:
             return 0x01;
+        case c0::I2C:
+            return 0x62;
+        case c0::INEG:
+            return 0x40;
     }
 }
 

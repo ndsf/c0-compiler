@@ -423,6 +423,9 @@ namespace fmt {
                 case c0::PRINTL:
                     name = "PRINTL";
                     break;
+                case c0::I2C:
+                    name = "I2C";
+                    break;
             }
             return format_to(ctx.out(), name);
         }

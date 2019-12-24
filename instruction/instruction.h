@@ -45,7 +45,8 @@ namespace c0 {
         POP,
         INEG,
         BIPUSH,
-        PRINTL
+        PRINTL,
+        I2C
     };
 
     class Instruction final {

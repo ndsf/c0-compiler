@@ -160,7 +160,7 @@ namespace c0 {
             if (level) {
                 for (int i = 1; i < level; i++) {
                     table.PreviousLevelForSum();
-                    offset += table.GetNextOffset();
+                    offset += table.GetNextOffset(i);
                 }
                 for (int i = 1; i < level; i++)
                     table.NextLevel();

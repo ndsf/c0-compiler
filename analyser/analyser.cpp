@@ -4,6 +4,7 @@
 
 namespace c0 {
     bool isMainDefined;
+    // ValueType expressionType = VOID_TYPE;
 
     std::tuple<std::vector<Instruction>, std::vector<GlobalConstant>, std::vector<GlobalFunction>, std::optional<CompilationError>>
     Analyser::Analyse() {
@@ -384,7 +385,7 @@ namespace c0 {
 //                if (!next.has_value() || next.value().GetType() != TokenType::RIGHT_BRACE)
 //                    return std::make_optional<CompilationError>(_current_pos, ErrorCode::ErrNoBrace);
 
-                for (int i = 0; i < table.GetNextOffset(); i++)
+                for (int i = 0; i < table.GetNextOffset(table._current_level); i++)
                     addInstruction(POP, 0, 0);
 
                 err = table.PreviousLevel();
@@ -854,7 +855,7 @@ namespace c0 {
                     auto err = analyseExpression();
                     if (err.has_value())
                         return err;
-                    addInstruction(IPRINT, 0, 0);
+                    addInstruction(IPRINT, 0, 0); // TODO
                 }
                 next = nextToken(); // ,
                 if (!next.has_value() || next.value().GetType() != TokenType::COMMA) {
@@ -907,9 +908,18 @@ namespace c0 {
 
         auto offset = getOffset(entry.value());
         auto level = entry.value().GetLevel();
-        addInstruction(LOADA, level == 0, offset);
-        addInstruction(ISCAN, 0, 0);
-        addInstruction(ISTORE, 0, 0);
+        switch (entry.value().GetValueType()) {
+            case INTEGER_TYPE:
+                addInstruction(LOADA, level == 0, offset);
+                addInstruction(ISCAN, 0, 0);
+                addInstruction(ISTORE, 0, 0);
+                break;
+            case CHAR_TYPE:
+                addInstruction(LOADA, level == 0, offset);
+                addInstruction(CSCAN, 0, 0);
+                addInstruction(ISTORE, 0, 0);
+                break;
+        }
         return {};
     }
 
@@ -972,6 +982,7 @@ namespace c0 {
     std::optional<CompilationError> Analyser::analyseCastExpression() {
         //<cast-expression> ::=
         //    {'('<type-specifier>')'}<unary-expression>
+        std::vector<TokenType> casts;
         while (true) {
             auto finish = false;
             auto next = nextToken();
@@ -980,14 +991,19 @@ namespace c0 {
                 if (!next.has_value())
                     return std::make_optional<CompilationError>(_current_pos, ErrorCode::ErrIncompleteExpression);
                 switch (next.value().GetType()) {
-                    case TokenType::VOID:
                     case TokenType::INT:
-                    case TokenType::CHAR:
-                    case TokenType::DOUBLE:
-                        next = nextToken();
-                        if (!next.has_value() || next.value().GetType() != TokenType::RIGHT_BRACKET)
-                            return std::make_optional<CompilationError>(_current_pos, ErrorCode::ErrNoBracket);
+                        casts.push_back(TokenType::INT);
                         break;
+                    case TokenType::CHAR:
+                        casts.push_back(TokenType::CHAR);
+                        break;
+                    case TokenType::DOUBLE:
+                        casts.push_back(TokenType::DOUBLE);
+                        break;
+                        // return std::make_optional<CompilationError>(_current_pos, ErrorCode::ErrWIP);
+//                        next = nextToken();
+//                        if (!next.has_value() || next.value().GetType() != TokenType::RIGHT_BRACKET)
+//                            return std::make_optional<CompilationError>(_current_pos, ErrorCode::ErrNoBracket);
                     default: { // may be '('<expression>')'
                         unreadToken();
                         unreadToken();
@@ -1004,6 +1020,20 @@ namespace c0 {
         auto err = analyseUnaryExpression();
         if (err.has_value())
             return err;
+        // insert here
+        for (auto type: casts) {
+            switch (type) {
+                case TokenType::CHAR:
+                    addInstruction(I2C, 0, 0);
+                    break;
+                default:
+                    break;
+            }
+        }
+//        while (!casts.empty()) {
+//            auto type = casts.pop_back();
+//            // switch () TODO
+//        }
         return {};
     }
 
@@ -1064,7 +1094,8 @@ namespace c0 {
                     if (err.has_value())
                         return err;
                     if (function.value().GetReturnType() == VOID_TYPE)
-                        return std::make_optional<CompilationError>(_current_pos, ErrorCode::ErrUseVoidFunctionInPrimaryExpression);
+                        return std::make_optional<CompilationError>(_current_pos,
+                                                                    ErrorCode::ErrUseVoidFunctionInPrimaryExpression);
                 } else {
                     next = nextToken();
                     auto val = next.value().GetValueString();
@@ -1162,7 +1193,8 @@ namespace c0 {
 
         auto level = entry.value().GetLevel();
         auto offset = entry.value().GetOffset();
-        addInstruction(LOADA, level == 0, offset);
+        // addInstruction(LOADA, level == 0, offset);
+        addInstruction(LOADA, level == 0, getOffset(entry.value()));
 
         next = nextToken(); // '='
         if (!next.has_value() ||

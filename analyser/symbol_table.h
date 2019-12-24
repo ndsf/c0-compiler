@@ -381,8 +381,8 @@ namespace c0 {
             return _symbol_table[_current_level].IsDuplicate(name);
         }
 
-        int32_t GetNextOffset() const {
-            return _symbol_table[_current_level].GetNextOffset();
+        int32_t GetNextOffset(int32_t level) const {
+            return _symbol_table[level].GetNextOffset();
         }
 
         int32_t _current_level;
