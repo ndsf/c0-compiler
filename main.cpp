@@ -99,6 +99,8 @@ char getByte(c0::Operation op) {
             return 0x62;
         case c0::INEG:
             return 0x40;
+        default:
+            return 'X';
     }
 }
 
@@ -219,14 +221,20 @@ void Analyse(std::istream &input, std::ostream &output, bool generateText) {
                 break;
         }
     } else {
-        output.put(0x43);
-        output.put(0x30);
-        output.put(0x3a);
-        output.put(0x29);
-        output.put(0x00);
-        output.put(0x00);
-        output.put(0x00);
-        output.put(0x01);
+//        output.put(0x43);
+//        output.put(0x30);
+//        output.put(0x3a);
+//        output.put(0x29);
+//        output.put(0x00);
+//        output.put(0x00);
+//        output.put(0x00);
+//        output.put(0x01);
+
+        // magic
+        output.write("\x43\x30\x3A\x29", 4);
+        // version
+        output.write("\x00\x00\x00\x01", 4);
+
         output.put((char) ((constants.size() >> 8) & 0xff));
         output.put((char) (constants.size() & 0xff));
         for (auto constant : constants) {

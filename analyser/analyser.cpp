@@ -4,9 +4,9 @@
 
 namespace c0 {
     bool isMainDefined;
-    // ValueType expressionType = VOID_TYPE;
+    ValueType expressionType = VOID_TYPE;
 
-    std::tuple<std::vector<Instruction>, std::vector<GlobalConstant>, std::vector<GlobalFunction>, std::optional<CompilationError>>
+    std::tuple <std::vector<Instruction>, std::vector<GlobalConstant>, std::vector<GlobalFunction>, std::optional<CompilationError>>
     Analyser::Analyse() {
         isMainDefined = false;
         addInstruction(NOP, 0, 0);
@@ -18,7 +18,7 @@ namespace c0 {
             return {_instructions, table._global_constants, table._global_functions, std::optional<CompilationError>()};
     }
 
-    std::optional<CompilationError> Analyser::analyseProgram() {
+    std::optional <CompilationError> Analyser::analyseProgram() {
         //<C0-program> ::=
         //    {<variable-declaration>}{<function-definition>}
         //<variable-declaration> ::=
@@ -51,7 +51,7 @@ namespace c0 {
         return {};
     }
 
-    std::optional<CompilationError> Analyser::analyseMultipleVariableDeclaration() {
+    std::optional <CompilationError> Analyser::analyseMultipleVariableDeclaration() {
         while (true) {
             auto finish = false;
             auto next = nextToken();
@@ -100,7 +100,7 @@ namespace c0 {
         return {};
     }
 
-    std::optional<CompilationError> Analyser::analyseVariableDeclaration() {
+    std::optional <CompilationError> Analyser::analyseVariableDeclaration() {
         //<variable-declaration> ::=
         //    [<const-qualifier>]<type-specifier><identifier>['='<expression>]{',' ... }';'
         auto isConst = false;
@@ -163,7 +163,7 @@ namespace c0 {
         return {};
     }
 
-    std::optional<CompilationError> Analyser::analyseFunctionDefinition() {
+    std::optional <CompilationError> Analyser::analyseFunctionDefinition() {
         //<function-definition> ::=
         //<type-specifier><identifier>'(' [[<const-qualifier>]<type-specifier><identifier>{',' ... }] ')'<compound-statement>
         //<function-call> ::=
@@ -202,7 +202,7 @@ namespace c0 {
         if (!next.has_value() || next.value().GetType() != TokenType::LEFT_BRACKET)
             return std::make_optional<CompilationError>(_current_pos, ErrorCode::ErrNoBracket);
 
-        std::vector<Arg> args;
+        std::vector <Arg> args;
         while (true) { // [[<const-qualifier>]<type-specifier><identifier>{','[<const-qualifier>]<type-specifier><identifier>}]
             auto isConst = false;
             next = nextToken();
@@ -284,7 +284,7 @@ namespace c0 {
         return {};
     }
 
-    std::optional<CompilationError> Analyser::analyseCompoundStatement() {
+    std::optional <CompilationError> Analyser::analyseCompoundStatement() {
         //<compound-statement> ::=
         //    '{' {<variable-declaration>} <statement-seq> '}'
 
@@ -306,7 +306,7 @@ namespace c0 {
         return {};
     }
 
-    std::optional<CompilationError> Analyser::analyseStatementSequence() {
+    std::optional <CompilationError> Analyser::analyseStatementSequence() {
         //<statement-seq> ::=
         //	{<statement>}
         while (true) {
@@ -337,7 +337,7 @@ namespace c0 {
         return {};
     }
 
-    std::optional<CompilationError> Analyser::analyseStatement() {
+    std::optional <CompilationError> Analyser::analyseStatement() {
         //<statement> ::=
         //     <compound-statement>
         //    |<condition-statement>
@@ -368,7 +368,7 @@ namespace c0 {
         ))
             return std::make_optional<CompilationError>(_current_pos, ErrorCode::ErrInvalidStatement); // empty
 
-        std::optional<CompilationError> err;
+        std::optional <CompilationError> err;
         switch (next.value().GetType()) {
             case TokenType::LEFT_BRACE: { // <compound-statement>
                 table.NextLevel();
@@ -473,7 +473,7 @@ namespace c0 {
         return {};
     }
 
-    std::optional<CompilationError> Analyser::analyseCondition(int32_t &falseJumpAddress) {
+    std::optional <CompilationError> Analyser::analyseCondition(int32_t &falseJumpAddress) {
         // <condition> ::= <expression>[<relational-operator><expression>]
         // <relational-operator>     ::= '<' | '<=' | '>' | '>=' | '!=' | '=='
         auto err = analyseExpression();
@@ -520,7 +520,7 @@ namespace c0 {
         return {};
     }
 
-    std::optional<CompilationError> Analyser::analyseConditionStatement() {
+    std::optional <CompilationError> Analyser::analyseConditionStatement() {
         /*<condition-statement> ::=
                  'if' '(' <condition> ')' <statement> ['else' <statement>]
         |'switch' '(' <expression> ')' '{' {<labeled-statement>} '}'*/
@@ -616,7 +616,7 @@ namespace c0 {
         return {};
     }
 
-    std::optional<CompilationError> Analyser::analyseLoopStatement() {
+    std::optional <CompilationError> Analyser::analyseLoopStatement() {
         /*
         <loop-statement> ::=
             'while' '(' <condition> ')' <statement>
@@ -764,7 +764,7 @@ namespace c0 {
         return {};
     }
 
-    std::optional<CompilationError> Analyser::analyseJumpStatement() {
+    std::optional <CompilationError> Analyser::analyseJumpStatement() {
         // <jump-statement> ::=
         //     'break' ';'
         //    |'continue' ';'
@@ -808,7 +808,7 @@ namespace c0 {
         return {};
     }
 
-    std::optional<CompilationError> Analyser::analysePrintStatement() {
+    std::optional <CompilationError> Analyser::analysePrintStatement() {
         // <print-statement> ::=
         //     'print' '(' [<printable-list>] ')' ';'
         // <printable-list>  ::=
@@ -847,15 +847,17 @@ namespace c0 {
                     addInstruction(LOADC, global.value().GetIndex(), 0);
                     addInstruction(SPRINT, 0, 0);
                     next = nextToken();
-                } else if (next.value().GetType() == TokenType::CHAR_LITERAL) {
-                    addInstruction(IPUSH, next.value().GetValueString()[0], 0);
-                    addInstruction(CPRINT, 0, 0);
-                    next = nextToken();
+//                } else if (next.value().GetType() == TokenType::CHAR_LITERAL) {
+//                    addInstruction(IPUSH, next.value().GetValueString()[0], 0);
+//                    addInstruction(CPRINT, 0, 0);
+//                    next = nextToken();
                 } else { // must be expression
                     auto err = analyseExpression();
                     if (err.has_value())
                         return err;
-                    addInstruction(IPRINT, 0, 0); // TODO
+                    if (expressionType == CHAR_TYPE)
+                        addInstruction(CPRINT, 0, 0);
+                    else addInstruction(IPRINT, 0, 0);
                 }
                 next = nextToken(); // ,
                 if (!next.has_value() || next.value().GetType() != TokenType::COMMA) {
@@ -879,7 +881,7 @@ namespace c0 {
         return {};
     }
 
-    std::optional<CompilationError> Analyser::analyseScanStatement() {
+    std::optional <CompilationError> Analyser::analyseScanStatement() {
         // <scan-statement> ::= 'scan' '(' <identifier> ')' ';'
         auto next = nextToken(); // scan
         if (!next.has_value() || next.value().GetType() != TokenType::SCAN)
@@ -923,11 +925,12 @@ namespace c0 {
         return {};
     }
 
-    std::optional<CompilationError> Analyser::analyseExpression() {
+    std::optional <CompilationError> Analyser::analyseExpression() {
         //<expression> ::=
         //    <additive-expression>
         //<additive-expression> ::=
         //     <multiplicative-expression>{<additive-operator><multiplicative-expression>}
+        expressionType = VOID_TYPE;
         auto err = analyseMultiplicativeExpression();
         if (err.has_value())
             return err;
@@ -952,7 +955,7 @@ namespace c0 {
         return {};
     }
 
-    std::optional<CompilationError> Analyser::analyseMultiplicativeExpression() {
+    std::optional <CompilationError> Analyser::analyseMultiplicativeExpression() {
         //<multiplicative-expression> ::=
         //     <cast-expression>{<multiplicative-operator><cast-expression>}
         auto err = analyseCastExpression();
@@ -979,10 +982,10 @@ namespace c0 {
         return {};
     }
 
-    std::optional<CompilationError> Analyser::analyseCastExpression() {
+    std::optional <CompilationError> Analyser::analyseCastExpression() {
         //<cast-expression> ::=
         //    {'('<type-specifier>')'}<unary-expression>
-        std::vector<TokenType> casts;
+        std::vector <TokenType> casts;
         while (true) {
             auto finish = false;
             auto next = nextToken();
@@ -993,17 +996,23 @@ namespace c0 {
                 switch (next.value().GetType()) {
                     case TokenType::INT:
                         casts.push_back(TokenType::INT);
+                        next = nextToken();
+                        if (!next.has_value() || next.value().GetType() != TokenType::RIGHT_BRACKET)
+                            return std::make_optional<CompilationError>(_current_pos, ErrorCode::ErrNoBracket);
                         break;
                     case TokenType::CHAR:
                         casts.push_back(TokenType::CHAR);
+                        next = nextToken();
+                        if (!next.has_value() || next.value().GetType() != TokenType::RIGHT_BRACKET)
+                            return std::make_optional<CompilationError>(_current_pos, ErrorCode::ErrNoBracket);
                         break;
                     case TokenType::DOUBLE:
                         casts.push_back(TokenType::DOUBLE);
+                        next = nextToken();
+                        if (!next.has_value() || next.value().GetType() != TokenType::RIGHT_BRACKET)
+                            return std::make_optional<CompilationError>(_current_pos, ErrorCode::ErrNoBracket);
                         break;
                         // return std::make_optional<CompilationError>(_current_pos, ErrorCode::ErrWIP);
-//                        next = nextToken();
-//                        if (!next.has_value() || next.value().GetType() != TokenType::RIGHT_BRACKET)
-//                            return std::make_optional<CompilationError>(_current_pos, ErrorCode::ErrNoBracket);
                     default: { // may be '('<expression>')'
                         unreadToken();
                         unreadToken();
@@ -1021,23 +1030,35 @@ namespace c0 {
         if (err.has_value())
             return err;
         // insert here
-        for (auto type: casts) {
+//        for (auto type: casts) {
+//            switch (type) {
+//                case TokenType::CHAR:
+//                    addInstruction(I2C, 0, 0);
+//                    break;
+//                default:
+//                    break;
+//            }
+//        }
+        while (!casts.empty()) {
+            auto type = casts.back();
+            casts.pop_back();
             switch (type) {
-                case TokenType::CHAR:
+                case INT:
+                    expressionType = INTEGER_TYPE;
+                    break;
+                case CHAR:
+                    expressionType = CHAR_TYPE;
                     addInstruction(I2C, 0, 0);
                     break;
                 default:
                     break;
+                    // double not supported
             }
         }
-//        while (!casts.empty()) {
-//            auto type = casts.pop_back();
-//            // switch () TODO
-//        }
         return {};
     }
 
-    std::optional<CompilationError> Analyser::analyseUnaryExpression() {
+    std::optional <CompilationError> Analyser::analyseUnaryExpression() {
         //<unary-expression> ::=
         //    [<unary-operator>]<primary-expression>
         //<unary-operator>          ::= '+' | '-'
@@ -1060,7 +1081,7 @@ namespace c0 {
         return {};
     }
 
-    std::optional<CompilationError> Analyser::analysePrimaryExpression() {
+    std::optional <CompilationError> Analyser::analysePrimaryExpression() {
         //<primary-expression> ::=
         //     '('<expression>')'
         //    |<identifier>
@@ -1096,6 +1117,8 @@ namespace c0 {
                     if (function.value().GetReturnType() == VOID_TYPE)
                         return std::make_optional<CompilationError>(_current_pos,
                                                                     ErrorCode::ErrUseVoidFunctionInPrimaryExpression);
+
+                    expressionType = function.value().GetReturnType();
                 } else {
                     next = nextToken();
                     auto val = next.value().GetValueString();
@@ -1108,14 +1131,17 @@ namespace c0 {
                     addInstruction(LOADA, level == 0, offset);
                     addInstruction(ILOAD, 0, 0);
 
+                    expressionType = entry.value().GetValueType();
                 }
                 break;
             }
             case TokenType::DECIMAL_LITERAL:
                 addInstruction(IPUSH, std::stoul(next.value().GetValueString()), 0);
+                expressionType = INTEGER_TYPE;
                 break;
             case TokenType::CHAR_LITERAL:
                 addInstruction(IPUSH, next.value().GetValueString()[0], 0);
+                expressionType = CHAR_TYPE;
                 break;
             case TokenType::FLOATING_LITERAL:
                 return std::make_optional<CompilationError>(_current_pos, ErrorCode::ErrWIP);
@@ -1125,7 +1151,7 @@ namespace c0 {
         return {};
     }
 
-    std::optional<CompilationError> Analyser::analyseFunctionCall() {
+    std::optional <CompilationError> Analyser::analyseFunctionCall() {
         // <function-call> ::= <identifier> '(' [<expression-list>] ')'
         // <expression-list> ::= <expression>{','<expression>}
         auto next = nextToken();
@@ -1167,7 +1193,7 @@ namespace c0 {
         return {};
     }
 
-    std::optional<CompilationError> Analyser::analyseAssignmentExpression() {
+    std::optional <CompilationError> Analyser::analyseAssignmentExpression() {
         // <assignment-expression> ::= <identifier><assignment-operator><expression>
         // 这里除了语法分析以外还要留意 标识符声明过吗？ 标识符是常量吗？ 需要生成指令吗？
         auto next = nextToken();
@@ -1211,7 +1237,7 @@ namespace c0 {
         return {};
     }
 
-    std::optional<Token> Analyser::nextToken() {
+    std::optional <Token> Analyser::nextToken() {
         if (_offset == _tokens.size())
             return {};
         // 考虑到 _tokens[0..._offset-1] 已经被分析过了
@@ -1227,7 +1253,7 @@ namespace c0 {
         _offset--;
     }
 
-    void Analyser::_add(const Token &tk, std::map<std::string, int32_t> &mp) {
+    void Analyser::_add(const Token &tk, std::map <std::string, int32_t> &mp) {
         if (tk.GetType() != TokenType::IDENTIFIER)
             DieAndPrint("only identifier can be added to the table.");
         mp[tk.GetValueString()] = _nextTokenIndex;
