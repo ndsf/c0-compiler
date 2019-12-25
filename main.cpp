@@ -239,6 +239,7 @@ void Analyse(std::istream &input, std::ostream &output, bool generateText) {
         output.put((char) (constants.size() & 0xff));
         for (auto constant : constants) {
             std::string result;
+            int32_t integer_value;
             switch (constant.GetType()) {
                 case c0::STRING_TYPE:
                     result = std::any_cast<std::string>(constant.GetValue());
@@ -246,6 +247,12 @@ void Analyse(std::istream &input, std::ostream &output, bool generateText) {
                     output.put((char) ((result.length() >> 8) & 0xff));
                     output.put((char) (result.length() & 0xff));
                     output << result;
+                    break;
+                case c0::INTEGER_TYPE:
+                    integer_value = std::any_cast<std::int32_t>(constant.GetValue());
+                    output.put(0x01); // type=INTEGER
+                    output.put((char) ((integer_value >> 8) & 0xff));
+                    output.put((char) (integer_value & 0xff));
                     break;
                 default:
                     break; // WIP

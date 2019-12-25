@@ -864,7 +864,7 @@ namespace c0 {
                     unreadToken();
                     break;
                 } else {
-                    addInstruction(BIPUSH, 32, 0);
+                    addInstruction(IPUSH, 32, 0);
                     addInstruction(CPRINT, 0, 0);
                 }
             }
