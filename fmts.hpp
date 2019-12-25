@@ -439,25 +439,14 @@ namespace fmt {
         template<typename FormatContext>
         auto format(const c0::Instruction &p, FormatContext &ctx) {
             std::string name;
-            switch (p.GetOperation()) {
-                case c0::LOADA:
+            switch (p.ParameterNum()) {
+                case 2:
                     return format_to(ctx.out(), "{} {} {}, {}", p.GetIndex(), p.GetOperation(), p.GetX(), p.GetY());
-                case c0::IPUSH:
-                case c0::LOADC:
-                case c0::CALL:
-                case c0::BIPUSH:
-                case c0::JMP:
-                case c0::JNE:
-                case c0::JE:
-                case c0::JG:
-                case c0::JL:
-                case c0::JLE:
-                case c0::JGE:
+                case 1:
                     return format_to(ctx.out(), "{} {} {}", p.GetIndex(), p.GetOperation(), p.GetX());
                 default:
                     return format_to(ctx.out(), "{} {}", p.GetIndex(), p.GetOperation());
             }
-            return format_to(ctx.out(), "ILL");
         }
     };
 }

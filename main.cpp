@@ -26,125 +26,40 @@ void Tokenize(std::istream &input, std::ostream &output) {
     return;
 }
 
-std::string getLow(int n, int in) {
+std::string getLowNBytes(int32_t n, int32_t in) {
     std::string bt;
-    for (int i = 1; i <= n; i++) {
-        int shiftNum = 8 * (n - i);
+    for (int32_t i = 1; i <= n; i++) {
+        auto shiftNum = 8 * (n - i);
         bt.push_back((char) ((in >> shiftNum) & 0xff));
     }
     return bt;
 }
 
-char getByte(c0::Operation op) {
-    switch (op) {
-        case c0::IPUSH:
-            return 0x02;
-        case c0::LOADA:
-            return 0x0a;
-        case c0::ILOAD:
-            return 0x10;
-        case c0::IMUL:
-            return 0x38;
-        case c0::IDIV:
-            return 0x3c;
-        case c0::IADD:
-            return 0x30;
-        case c0::ISUB:
-            return 0x34;
-        case c0::RET:
-            return 0x88;
-        case c0::IRET:
-            return 0x89;
-        case c0::JE:
-            return 0x71;
-        case c0::JNE:
-            return 0x72;
-        case c0::JL:
-            return 0x73;
-        case c0::JGE:
-            return 0x74;
-        case c0::JG:
-            return 0x75;
-        case c0::JLE:
-            return 0x76;
-        case c0::ICMP:
-            return 0x44;
-        case c0::JMP:
-            return 0x70;
-        case c0::CALL:
-            return 0x80;
-        case c0::ISTORE:
-            return 0x20;
-        case c0::SPRINT:
-            return 0xa3;
-        case c0::IPRINT:
-            return 0xa0;
-        case c0::CPRINT:
-            return 0xa2;
-        case c0::LOADC:
-            return 0x09;
-        case c0::ISCAN:
-            return 0xb0;
-        case c0::CSCAN:
-            return 0xb2;
-        case c0::NOP:
-            return 0x00;
-        case c0::POP:
-            return 0x04;
-        case c0::PRINTL:
-            return 0xaf;
-        case c0::BIPUSH:
-            return 0x01;
-        case c0::I2C:
-            return 0x62;
-        case c0::INEG:
-            return 0x40;
-        default:
-            return 'X';
-    }
-}
-
-bool isJump(c0::Operation type) { // need removing
-    return (type == c0::JMP || type == c0::JNE || type == c0::JE
-            || type == c0::JG || type == c0::JL || type == c0::JLE || type == c0::JGE
-    );
-}
-
-int32_t needParameterNum(c0::Operation type) {
-    if (type == c0::LOADA)
-        return 2;
-    else if (type == c0::IPUSH || type == c0::LOADC || isJump(type) ||
-             type == c0::CALL)
-        return 1;
-    else
-        return 0;
-}
-
-void getObjByType(c0::Operation type, std::ostream &output, c0::Instruction instruction) {
+void putParameters(std::ostream &output, c0::Instruction instruction) {
     std::string op;
-    switch (needParameterNum(type)) {
+    switch (instruction.ParameterNum()) {
         case 1:
             if (instruction.GetOperation() == c0::IPUSH) {
-                op = getLow(4, instruction.GetX());
+                op = getLowNBytes(4, instruction.GetX());
                 output << op;
             } else if (instruction.GetOperation() == c0::LOADC) {
-                op = getLow(2, instruction.GetX());
+                op = getLowNBytes(2, instruction.GetX());
                 output << op;
             } else if (instruction.GetOperation() == c0::CALL) {
-                op = getLow(2, instruction.GetX());
+                op = getLowNBytes(2, instruction.GetX());
                 output << op;
-            } else if (isJump(instruction.GetOperation())) {
-                op = getLow(2, instruction.GetX());
+            } else if (instruction.IsJumpInstruction()) {
+                op = getLowNBytes(2, instruction.GetX());
                 output << op;
             } else if (instruction.GetOperation() == c0::BIPUSH) {
-                op = getLow(1, instruction.GetX());
+                op = getLowNBytes(1, instruction.GetX());
                 output << op;
             }
             break;
         case 2:
-            op = getLow(2, instruction.GetX());
+            op = getLowNBytes(2, instruction.GetX());
             output << op;
-            op = getLow(4, instruction.GetY());
+            op = getLowNBytes(4, instruction.GetY());
             output << op;
             break;
         case 0:
@@ -221,22 +136,12 @@ void Analyse(std::istream &input, std::ostream &output, bool generateText) {
                 break;
         }
     } else {
-//        output.put(0x43);
-//        output.put(0x30);
-//        output.put(0x3a);
-//        output.put(0x29);
-//        output.put(0x00);
-//        output.put(0x00);
-//        output.put(0x00);
-//        output.put(0x01);
-
         // magic
         output.write("\x43\x30\x3A\x29", 4);
         // version
         output.write("\x00\x00\x00\x01", 4);
 
-        output.put((char) ((constants.size() >> 8) & 0xff));
-        output.put((char) (constants.size() & 0xff));
+        output << getLowNBytes(2, constants.size());
         for (auto constant : constants) {
             std::string result;
             int32_t integer_value;
@@ -244,21 +149,19 @@ void Analyse(std::istream &input, std::ostream &output, bool generateText) {
                 case c0::STRING_TYPE:
                     result = std::any_cast<std::string>(constant.GetValue());
                     output.put(0x00); // type=STRING
-                    output.put((char) ((result.length() >> 8) & 0xff));
-                    output.put((char) (result.length() & 0xff));
+                    output << getLowNBytes(2, result.length());
                     output << result;
                     break;
                 case c0::INTEGER_TYPE:
                     integer_value = std::any_cast<std::int32_t>(constant.GetValue());
                     output.put(0x01); // type=INTEGER
-                    output.put((char) ((integer_value >> 8) & 0xff));
-                    output.put((char) (integer_value & 0xff));
+                    output << getLowNBytes(2, integer_value);
                     break;
                 default:
                     break; // WIP
             }
         }
-        bool sm = false;
+        bool flag = false;
         int funcIndex = 0;
         int j = 0;
 
@@ -274,35 +177,35 @@ void Analyse(std::istream &input, std::ostream &output, bool generateText) {
         arr.push_back(count);
 
 
-        output << getLow(2, arr[1]);
+        output << getLowNBytes(2, arr[1]);
 
         for (int i = 0; i < instructions.size(); i++) {
             auto instruction = instructions[i];
             if (instructions[i].GetIndex() == 0) {
-                if (sm) {
+                if (flag) {
                     j = i;
                     break;
                 }
-                sm = true;
+                flag = true;
             }
             // output << fmt::format("{}\n", instruction);
-            output.put(getByte(instruction.GetOperation()));
-            getObjByType(instruction.GetOperation(), output, instruction);
+            output.put(instruction.GetByte());
+            putParameters(output, instruction);
         }
 
-        output << getLow(2, functions.size());
+        output << getLowNBytes(2, functions.size());
         int cnt = 0;
         for (int i = 2; i < arr.size(); i++) {
             auto fun = functions[i - 2];
 
-            output << getLow(2, fun.GetNameIndex());
-            output << getLow(2, fun.GetParamsSize());
-            output << getLow(2, fun.GetLevel());
-            output << getLow(2, arr[i]);
+            output << getLowNBytes(2, fun.GetNameIndex());
+            output << getLowNBytes(2, fun.GetParamsSize());
+            output << getLowNBytes(2, fun.GetLevel());
+            output << getLowNBytes(2, arr[i]);
             for (int k = 0; k < arr[i]; k++) {
                 auto instruction = instructions[cnt + k + arr[1]];
-                output << getByte(instruction.GetOperation());
-                getObjByType(instruction.GetOperation(), output, instruction);
+                output << instruction.GetByte();
+                putParameters(output, instruction);
             }
             cnt += arr[i];
         }

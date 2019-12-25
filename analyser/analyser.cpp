@@ -1030,15 +1030,6 @@ namespace c0 {
         if (err.has_value())
             return err;
         // insert here
-//        for (auto type: casts) {
-//            switch (type) {
-//                case TokenType::CHAR:
-//                    addInstruction(I2C, 0, 0);
-//                    break;
-//                default:
-//                    break;
-//            }
-//        }
         while (!casts.empty()) {
             auto type = casts.back();
             casts.pop_back();
@@ -1200,16 +1191,7 @@ namespace c0 {
         if (!next.has_value() || next.value().GetType() != TokenType::IDENTIFIER)
             return std::make_optional<CompilationError>(_current_pos, ErrorCode::ErrNeedIdentifier);
         auto name = next.value().GetValueString();
-//        if (isDeclared(next.value().GetValueString()))
-//            return std::make_optional<CompilationError>(_current_pos, ErrorCode::ErrDuplicateDeclaration);
-        //if (!isDeclared(str))
-        //    return std::make_optional<CompilationError>(_current_pos, ErrorCode::ErrNotDeclared);
-        //if (isConstant(str))
-        //    return std::make_optional<CompilationError>(_current_pos, ErrorCode::ErrAssignToConstant);
-//        if (isUninitializedVariable(str)) {
-//            _vars[str] = _uninitialized_vars[str];
-//            _uninitialized_vars.erase(str);
-//        }
+
         auto entry = table.FindSymbol(name);
         if (!entry.has_value())
             return std::make_optional<CompilationError>(_current_pos, ErrorCode::ErrNotDeclared);
@@ -1219,7 +1201,6 @@ namespace c0 {
 
         auto level = entry.value().GetLevel();
         auto offset = entry.value().GetOffset();
-        // addInstruction(LOADA, level == 0, offset);
         addInstruction(LOADA, level == 0, getOffset(entry.value()));
 
         next = nextToken(); // '='
@@ -1232,7 +1213,6 @@ namespace c0 {
         if (err.has_value())
             return err;
         // no semicolon
-        // _instructions.emplace_back(Operation::STO, getIndex(str));
         addInstruction(ISTORE, 0, 0);
         return {};
     }
@@ -1248,7 +1228,7 @@ namespace c0 {
 
     void Analyser::unreadToken() {
         if (_offset == 0)
-            DieAndPrint("analyser unreads token from the begining.");
+            DieAndPrint("analyser unreads token from the beginning.");
         _current_pos = _tokens[_offset - 1].GetEndPos();
         _offset--;
     }
@@ -1268,42 +1248,5 @@ namespace c0 {
     void Analyser::updateInstruction(size_t index, int32_t x, int32_t y) {
         _instructions[index].SetX(x);
         _instructions[index].SetY(y);
-    }
-
-    void Analyser::addVariable(const Token &tk) {
-        _add(tk, _vars);
-    }
-
-    void Analyser::addConstant(const Token &tk) {
-        _add(tk, _consts);
-    }
-
-    void Analyser::addUninitializedVariable(const Token &tk) {
-        _add(tk, _uninitialized_vars);
-    }
-
-    int32_t Analyser::getIndex(const std::string &s) {
-        if (_uninitialized_vars.find(s) != _uninitialized_vars.end())
-            return _uninitialized_vars[s];
-        else if (_vars.find(s) != _vars.end())
-            return _vars[s];
-        else
-            return _consts[s];
-    }
-
-    bool Analyser::isDeclared(const std::string &s) {
-        return isConstant(s) || isUninitializedVariable(s) || isInitializedVariable(s);
-    }
-
-    bool Analyser::isUninitializedVariable(const std::string &s) {
-        return _uninitialized_vars.find(s) != _uninitialized_vars.end();
-    }
-
-    bool Analyser::isInitializedVariable(const std::string &s) {
-        return _vars.find(s) != _vars.end();
-    }
-
-    bool Analyser::isConstant(const std::string &s) {
-        return _consts.find(s) != _consts.end();
     }
 }

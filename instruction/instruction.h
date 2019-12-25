@@ -94,6 +94,89 @@ namespace c0 {
 
         int32_t GetIndex() const { return _index; };
 
+        bool IsJumpInstruction() const {
+            return (_opr == c0::JMP || _opr == c0::JNE || _opr == c0::JE || _opr == c0::JG || _opr == c0::JL ||
+                    _opr == c0::JLE || _opr == c0::JGE);
+        }
+
+        int32_t ParameterNum() const {
+            if (_opr == c0::LOADA)
+                return 2;
+            else if (_opr == c0::IPUSH || _opr == c0::LOADC || IsJumpInstruction() || _opr == c0::CALL)
+                return 1;
+            else
+                return 0;
+        }
+
+        char GetByte() const {
+            switch (_opr) {
+                case c0::IPUSH:
+                    return 0x02;
+                case c0::LOADA:
+                    return 0x0a;
+                case c0::ILOAD:
+                    return 0x10;
+                case c0::IMUL:
+                    return 0x38;
+                case c0::IDIV:
+                    return 0x3c;
+                case c0::IADD:
+                    return 0x30;
+                case c0::ISUB:
+                    return 0x34;
+                case c0::RET:
+                    return 0x88;
+                case c0::IRET:
+                    return 0x89;
+                case c0::JE:
+                    return 0x71;
+                case c0::JNE:
+                    return 0x72;
+                case c0::JL:
+                    return 0x73;
+                case c0::JGE:
+                    return 0x74;
+                case c0::JG:
+                    return 0x75;
+                case c0::JLE:
+                    return 0x76;
+                case c0::ICMP:
+                    return 0x44;
+                case c0::JMP:
+                    return 0x70;
+                case c0::CALL:
+                    return 0x80;
+                case c0::ISTORE:
+                    return 0x20;
+                case c0::SPRINT:
+                    return 0xa3;
+                case c0::IPRINT:
+                    return 0xa0;
+                case c0::CPRINT:
+                    return 0xa2;
+                case c0::LOADC:
+                    return 0x09;
+                case c0::ISCAN:
+                    return 0xb0;
+                case c0::CSCAN:
+                    return 0xb2;
+                case c0::NOP:
+                    return 0x00;
+                case c0::POP:
+                    return 0x04;
+                case c0::PRINTL:
+                    return 0xaf;
+                case c0::BIPUSH:
+                    return 0x01;
+                case c0::I2C:
+                    return 0x62;
+                case c0::INEG:
+                    return 0x40;
+                default:
+                    return 'X';
+            }
+        }
+
     private:
         Operation _opr;
         int32_t _x;
