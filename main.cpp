@@ -39,30 +39,32 @@ void putParameters(std::ostream &output, c0::Instruction instruction) {
     std::string op;
     switch (instruction.ParameterNum()) {
         case 1:
-            if (instruction.GetOperation() == c0::IPUSH) {
-                op = getLowNBytes(4, instruction.GetX());
-                output << op;
-            } else if (instruction.GetOperation() == c0::LOADC) {
+            if (instruction.IsJumpInstruction()) {
                 op = getLowNBytes(2, instruction.GetX());
-                output << op;
-            } else if (instruction.GetOperation() == c0::CALL) {
-                op = getLowNBytes(2, instruction.GetX());
-                output << op;
-            } else if (instruction.IsJumpInstruction()) {
-                op = getLowNBytes(2, instruction.GetX());
-                output << op;
-            } else if (instruction.GetOperation() == c0::BIPUSH) {
-                op = getLowNBytes(1, instruction.GetX());
-                output << op;
+            } else {
+                auto opr = instruction.GetOperation();
+                switch (opr) {
+                    case c0::IPUSH:
+                        op = getLowNBytes(4, instruction.GetX());
+                        break;
+                    case c0::LOADC:
+                        op = getLowNBytes(2, instruction.GetX());
+                        break;
+                    case c0::CALL:
+                        op = getLowNBytes(2, instruction.GetX());
+                        break;
+                    case c0::BIPUSH:
+                        op = getLowNBytes(1, instruction.GetX());
+                        break;
+                }
             }
+            output << op;
             break;
         case 2:
-            op = getLowNBytes(2, instruction.GetX());
-            output << op;
-            op = getLowNBytes(4, instruction.GetY());
-            output << op;
+            output << getLowNBytes(2, instruction.GetX()) << getLowNBytes(4, instruction.GetY());
             break;
         case 0:
+        default:
             break;
     }
 }
@@ -103,17 +105,17 @@ void Analyse(std::istream &input, std::ostream &output, bool generateText) {
         }
 
         output << ".start:\n";
-        bool sm = false;
+        bool flag = false;
         int funcIndex = 0;
         int j = 0;
         for (int i = 0; i < instructions.size(); i++) {
             auto instruction = instructions[i];
             if (instructions[i].GetIndex() == 0) {
-                if (sm) {
+                if (flag) {
                     j = i;
                     break;
                 }
-                sm = true;
+                flag = true;
             }
             output << fmt::format("{}\n", instruction);
         }
@@ -123,7 +125,7 @@ void Analyse(std::istream &input, std::ostream &output, bool generateText) {
             output << fmt::format("{} {} {} {}\n", function.GetIndex(), function.GetNameIndex(),
                                   function.GetParamsSize(),
                                   function.GetLevel());
-        sm = false;
+        flag = false;
         funcIndex = 0;
         for (int i = j; i < instructions.size(); i++) {
             auto instruction = instructions[i];
